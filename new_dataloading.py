@@ -4,7 +4,7 @@ from scipy.io import loadmat
 import scipy.fft
 
 # Load the .mat file
-f = loadmat('/Users/marioknicola/MSc Project/kspace_mat_512x512/kspace_Subject0026_oo.mat')
+f = loadmat('/Users/marioknicola/MSc Project/kspace_mat_512x512/kspace_Subject0027_oo.mat')
 
 print(f['kspace'].shape)  # Check the shape of the data
 kspace_data = f['kspace']  # Extract the kspace data
@@ -25,8 +25,8 @@ plt.imshow(sos_image, cmap='gray')
 plt.show()
 
 # Crop k-space from the center
-center_x = 55 # note that these display the wrong way around
-center_y = 205
+center_x = 52 # note that these display the wrong way around
+center_y = 204
 crop_size = 40  # Define the crop size
 
 kspace_cropped = kspace_data[center_x - crop_size:center_x + crop_size, center_y - crop_size:center_y + crop_size, :]
