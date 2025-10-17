@@ -73,15 +73,15 @@ def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=
         plt.figure(figsize=(18, 6))
 
         plt.subplot(1, 3, 1)
-        plt.imshow(np.abs(kspace_data[:,:,10])+1e-6, cmap='gray')
+        plt.imshow(np.log1p(np.abs(kspace_data[:,:,10])+1e-6), cmap='gray')
         plt.title('Original K-space')
 
         plt.subplot(1, 3, 2)
-        plt.imshow(np.abs(kspace_cropped[:,:,10])+1e-6, cmap='gray')
+        plt.imshow(np.log1p(np.abs(kspace_cropped[:,:,10])+1e-6), cmap='gray')
         plt.title('Cropped K-space')
 
         plt.subplot(1, 3, 3)
-        plt.imshow(np.abs(kspace_padded[:,:,10])+1e-6, cmap='gray')
+        plt.imshow(np.log1p(np.abs(kspace_padded[:,:,10])+1e-6), cmap='gray')
         plt.title('Cropped and Padded K-space')
 
         plt.show()
@@ -153,4 +153,4 @@ if __name__ == '__main__':
     folder_path = '/Users/marioknicola/MSc Project/kspace_mat_512x512'  # Replace with your folder path
     output_folder_fullres = 'fullres_images'
     output_folder_lowres = 'lowres_images'
-    process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres)
+    process_folder(folder_path, crop_size=40, plot_results=True, save_nifti=False, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres)
