@@ -6,7 +6,7 @@ import nibabel as nib
 import os
 import glob
 
-def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres='fullres', output_folder_lowres='lowres'):
+def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres='fullres', output_folder_lowres='lowres', output_folder_cropped='cropped'):
     """
     Loads k-space data from a .mat file, crops and zero-pads it, and optionally plots and saves the results.
 
@@ -17,6 +17,7 @@ def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=
         save_nifti (bool): Whether to save the original and padded images as NIfTI files.
         output_folder_fullres (str): Name of the folder to save full resolution images.
         output_folder_lowres (str): Name of the folder to save low resolution images.
+        output_folder_cropped (str): Name of the folder to save cropped images.
 
     Returns:
         tuple: sos_image (original), sos_image_padded (cropped and padded)
@@ -57,25 +58,6 @@ def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=
 
     # Calculate signal power in the noisy k-space data
     signal_power_noisy = np.mean(np.abs(kspace_data_noisy)**2)
-
-    if plot_results==True:
-        # Plot the power spectrum before and after adding noise
-        plt.figure(figsize=(12, 6))
-
-        # Power spectrum before adding noise
-        plt.subplot(1, 2, 1)
-        plt.imshow(np.log1p(np.abs(np.mean(kspace_data, axis=2))), cmap='gray')
-        plt.title('Power Spectrum Before Adding Noise')
-        plt.colorbar()
-
-        # Power spectrum after adding noise
-        plt.subplot(1, 2, 2)
-        plt.imshow(np.log1p(np.abs(np.mean(kspace_data_noisy, axis=2))), cmap='gray')
-        plt.title('Power Spectrum After Adding Noise')
-        plt.colorbar()
-
-        plt.tight_layout()
-        plt.show()
 
     kspace_data = kspace_data_noisy
     # The SNR is halved by doubling the noise power, relative to the signal power.
@@ -168,11 +150,15 @@ def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=
         # Display the original, cropped, and padded images
         plt.figure(figsize=(18, 6))
 
-        plt.subplot(1, 2, 1)
+        plt.subplot(1, 3, 1)
         plt.imshow(sos_image_original, cmap='gray')
         plt.title('Original Image')
 
-        plt.subplot(1, 2, 2)
+        plt.subplot(1, 3, 2)
+        plt.imshow(sos_image_cropped, cmap='gray')
+        plt.title('Cropped Image')
+
+        plt.subplot(1, 3, 3)
         plt.imshow(sos_image_padded, cmap='gray')
         plt.title('Cropped & Padded Image')
 
@@ -182,10 +168,12 @@ def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=
         # Create output folders if they don't exist
         os.makedirs(output_folder_fullres, exist_ok=True)
         os.makedirs(output_folder_lowres, exist_ok=True)
+        os.makedirs(output_folder_cropped, exist_ok=True)
 
         # Rotate and flip images
         sos_image_original_processed = np.fliplr(np.rot90(sos_image_original, k=-1))
         sos_image_padded_processed = np.fliplr(np.rot90(sos_image_padded, k=-1))
+        sos_image_cropped_processed = np.fliplr(np.rot90(sos_image_cropped, k=-1))
 
         # Extract filename without extension
         file_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -196,10 +184,13 @@ def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=
 
         img_padded = nib.Nifti1Image(sos_image_padded_processed, np.eye(4))  # Create NIfTI image object
         nib.save(img_padded, os.path.join(output_folder_lowres, f'LR_{file_name}.nii'))  # Save as NIfTI file
+
+        img_cropped = nib.Nifti1Image(sos_image_cropped_processed, np.eye(4))  # Create NIfTI image object
+        nib.save(img_cropped, os.path.join(output_folder_cropped, f'CR_{file_name}.nii'))  # Save as NIfTI file
     
     return sos_image_original, sos_image_padded
 
-def process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres='fullres', output_folder_lowres='lowres'):
+def process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres='fullres', output_folder_lowres='lowres', output_folder_cropped='cropped'):
     """
     Processes all .mat files in a folder.
 
@@ -210,6 +201,7 @@ def process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=Tru
         save_nifti (bool): Whether to save the original and padded images as NIfTI files.
         output_folder_fullres (str): Name of the folder to save full resolution images.
         output_folder_lowres (str): Name of the folder to save low resolution images.
+        output_folder_cropped (str): Name of the folder to save cropped images.
     """
     # filepath: /Users/marioknicola/MSc Project/synthsup-speechMRI-recon/dataloading.py
     # Find all .mat files in the folder
@@ -222,7 +214,7 @@ def process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=Tru
     for file_path in mat_files:
         print(f"Processing: {file_path}")
         try:
-            process_kspace_data(file_path, crop_size, plot_results, save_nifti, output_folder_fullres, output_folder_lowres)
+            process_kspace_data(file_path, crop_size, plot_results, save_nifti, output_folder_fullres, output_folder_lowres, output_folder_cropped)
             print(f"Successfully processed: {file_path}")
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
@@ -232,4 +224,5 @@ if __name__ == '__main__':
     folder_path = '/Users/marioknicola/MSc Project/kspace_mat_512x512'  # Replace with your folder path
     output_folder_fullres = 'HR_nii'
     output_folder_lowres = 'Synth_LR_nii'
-    process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres)
+    output_folder_cropped = 'Cropped_nii'
+    process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres, output_folder_cropped=output_folder_cropped)
