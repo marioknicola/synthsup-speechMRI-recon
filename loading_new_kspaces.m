@@ -1,6 +1,6 @@
 load("kspace_Subject0023_ff.mat", "kspace");
 USkspace = kspace; % 80 x 82 x 22 x 100
-load("kspace_Subject0026_aa.mat","kspace");
+load("kspace_Subject0026_ff.mat","kspace");
 FSkspace = kspace; % 312 x 410 x 22
 
 % FS coil 1 kspace
