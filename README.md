@@ -109,6 +109,7 @@ synthsup-speechMRI-recon/
 ## 📚 Documentation
 
 - **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete tutorial from setup to inference
+- **[Inference Guide](docs/INFERENCE_GUIDE.md)** - Testing trained models and visualization
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands and workflows
 - **[U-Net Documentation](docs/UNET_README.md)** - Daily usage reference
 - **[Architecture Details](docs/UNET_ARCHITECTURE.md)** - Technical deep dive

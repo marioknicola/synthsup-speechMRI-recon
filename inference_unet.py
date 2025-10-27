@@ -61,7 +61,7 @@ def compute_ssim(pred, target, window_size=11):
     return np.mean(ssim_map)
 
 
-def load_model(checkpoint_path, device, in_channels=1, out_channels=1, base_filters=64):
+def load_model(checkpoint_path, device, in_channels=1, out_channels=1, base_filters=32):
     """Load trained model from checkpoint."""
     print(f"Loading model from {checkpoint_path}")
     
@@ -196,8 +196,8 @@ def main():
                         help='Number of input channels')
     parser.add_argument('--out-channels', type=int, default=1,
                         help='Number of output channels')
-    parser.add_argument('--base-filters', type=int, default=64,
-                        help='Number of filters in first layer')
+    parser.add_argument('--base-filters', type=int, default=32,
+                        help='Number of filters in first layer (default: 32 for lightweight baseline)')
     
     # Data arguments
     parser.add_argument('--input-dir', type=str, required=True,
@@ -208,6 +208,8 @@ def main():
                         help='Output directory for reconstructed NIfTI files (default: ../reconstructions)')
     parser.add_argument('--file-pattern', type=str, default='*.nii*',
                         help='Glob pattern for input files')
+    parser.add_argument('--test-indices', type=str, default=None,
+                        help='Path to test_indices.txt file (to test only on held-out test set)')
     
     # Processing arguments
     parser.add_argument('--normalize', action='store_true', default=True,
@@ -253,6 +255,30 @@ def main():
         print(f"No files found matching {args.input_dir}/{args.file_pattern}")
         return
     
+    # Filter by test indices if provided
+    if args.test_indices:
+        print(f"Loading test indices from {args.test_indices}")
+        with open(args.test_indices, 'r') as f:
+            test_indices = []
+            for line in f:
+                line = line.strip()
+                # Skip empty lines and comments
+                if line and not line.startswith('#'):
+                    try:
+                        test_indices.append(int(line))
+                    except ValueError:
+                        # Skip lines that aren't integers
+                        continue
+        
+        # Filter input files to only test set
+        if len(test_indices) > 0:
+            filtered_files = [input_files[i] for i in test_indices if i < len(input_files)]
+            print(f"Filtering to {len(filtered_files)} test set files (from {len(input_files)} total)")
+            print(f"Test set indices: {sorted(test_indices)}")
+            input_files = filtered_files
+        else:
+            print("Warning: No valid test indices found")
+    
     print(f"Found {len(input_files)} files to reconstruct\n")
     
     # Process each file
@@ -278,10 +304,27 @@ def main():
         
         # Compute metrics if target provided
         if args.compute_metrics and args.target_dir:
-            target_file = os.path.join(args.target_dir, filename)
+            # Handle filename mapping: LR_kspace_* -> kspace_*
+            target_filename = filename.replace('LR_', '') if filename.startswith('LR_') else filename
+            target_file = os.path.join(args.target_dir, target_filename)
             
             if os.path.exists(target_file):
                 target_data = nib.load(target_file).get_fdata()
+                
+                # Handle 2D vs 3D data
+                if len(target_data.shape) == 2:
+                    target_data = target_data[:, :, np.newaxis]
+                if len(recon_volume.shape) == 2:
+                    recon_volume = recon_volume[:, :, np.newaxis]
+                
+                # Check if shapes match, transpose target if needed
+                if target_data.shape[:2] != recon_volume.shape[:2]:
+                    if target_data.shape[:2] == recon_volume.shape[:2][::-1]:
+                        # Transpose spatial dimensions
+                        target_data = np.transpose(target_data, (1, 0, 2))
+                        print(f"  Transposed target to match reconstruction shape: {target_data.shape}")
+                    else:
+                        print(f"  Warning: Shape mismatch! Recon: {recon_volume.shape}, Target: {target_data.shape}")
                 
                 # Compute frame-wise metrics
                 num_frames = min(recon_volume.shape[2], target_data.shape[2])
@@ -321,7 +364,10 @@ def main():
         # Visualize
         if args.visualize:
             input_data = nib.load(input_file).get_fdata()
-            target_data = nib.load(os.path.join(args.target_dir, filename)).get_fdata() if args.target_dir else None
+            # Handle filename mapping for target: LR_kspace_* -> kspace_*
+            target_filename = filename.replace('LR_', '') if filename.startswith('LR_') else filename
+            target_file_vis = os.path.join(args.target_dir, target_filename) if args.target_dir else None
+            target_data = nib.load(target_file_vis).get_fdata() if target_file_vis and os.path.exists(target_file_vis) else None
             
             num_frames = recon_volume.shape[2]
             vis_indices = np.linspace(0, num_frames - 1, min(args.num_vis, num_frames), dtype=int)
