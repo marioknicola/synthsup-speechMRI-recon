@@ -12,7 +12,10 @@ def convert_nii_to_png(input_dir, output_dir):
     It handles files that are strictly 2D or 3D with a single slice.
     It skips 3D volumes (e.g., 256x256x128) with a warning.
     
-    Saves images as 16-bit grayscale PNGs.
+
+    python nifti2png.py /home/user/data/nii_files /home/user/data/png_output
+
+    Saves images as 8-bit grayscale PNGs.
     """
     print(f"Input directory: {input_dir}")
     print(f"Output directory: {output_dir}")
@@ -74,22 +77,30 @@ def convert_nii_to_png(input_dir, output_dir):
                 
                 if max_val - min_val == 0:
                     # Handle flat image (all pixels are the same value)
-                    # Create a 16-bit zero array
-                    uint16_data = np.zeros(slice_data.shape, dtype=np.uint16)
+                    # Create a 8-bit zero array
+                    uint8_data = np.zeros(slice_data.shape, dtype=np.uint8)
                 else:
                     # Normalize to 0.0 - 1.0
                     normalized_data = (slice_data - min_val) / (max_val - min_val)
-                    # Scale to 0-65535 and convert to 16-bit unsigned integer
-                    uint16_data = (normalized_data * 65535).astype(np.uint16)
+                    # Scale to 0-255 and convert to 8-bit unsigned integer
+                    uint8_data = (normalized_data * 255).astype(np.uint8)
 
                 # --- Saving the Image ---
                 # Create a PIL image from the numpy array
-                # PIL will automatically use 16-bit mode ('I;16') from the np.uint16 dtype
-                pil_img = Image.fromarray(uint16_data)
+                # PIL will automatically use 8-bit grayscale mode ('L') from the np.uint8 dtype
+                pil_img = Image.fromarray(uint8_data)
                 
                 # Save the image as a PNG
-                # This will now be a 16-bit grayscale PNG
+                # This will now be a 8-bit grayscale PNG
                 pil_img.save(output_path)
+                
+                # --- Alternative: Save as JPEG ---
+                # # Uncomment the lines below to save as JPEG instead (or in addition)
+                # # Change the output path extension
+                # output_path_jpeg = os.path.join(output_dir, output_filename.replace(".png", ".jpg"))
+                # # Save as JPEG (quality 95 is a good balance)
+                # pil_img.save(output_path_jpeg, "JPEG", quality=95)
+                # ######################################
                 
                 print(f"  Successfully saved: {output_path}")
 
@@ -105,7 +116,7 @@ def main():
     """
     # Set up the argument parser
     parser = argparse.ArgumentParser(
-        description="Convert 2D NIfTI (.nii, .nii.gz) files to 16-bit PNG.",
+        description="Convert 2D NIfTI (.nii, .nii.gz) files to 8-bit PNG.",
         formatter_class=argparse.RawTextHelpFormatter
     )
     
@@ -128,4 +139,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

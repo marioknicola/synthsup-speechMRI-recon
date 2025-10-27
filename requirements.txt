@@ -1,0 +1,23 @@
+# Core scientific computing
+numpy>=1.24.0,<2.0.0
+scipy>=1.10.0,<2.0.0
+matplotlib>=3.7.0,<4.0.0
+
+# Medical imaging
+nibabel>=5.1.0,<6.0.0
+pydicom>=2.4.0,<3.0.0
+
+# Image processing and metrics
+scikit-image>=0.21.0,<1.0.0
+
+# Deep learning (PyTorch for U-Net)
+torch>=2.0.0,<3.0.0
+torchvision>=0.15.0,<1.0.0
+
+# Utilities
+tqdm>=4.65.0,<5.0.0
+h5py>=3.8.0,<4.0.0
+
+# Optional: for Jupyter notebooks
+# jupyter>=1.0.0
+# ipykernel>=6.23.0
