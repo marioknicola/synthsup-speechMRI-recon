@@ -9,17 +9,15 @@ A comprehensive toolkit for MRI reconstruction combining classical SENSE algorit
 ## 🎯 Overview
 
 This repository provides tools for:
-- **Classical SENSE Reconstruction:** Generalized SENSE implementation for multi-coil MRI data
+- **Classical SENSE Reconstruction:** For 22 coil data, the filled lines of kspace can be modified to fit the trajectory.
 - **Deep Learning Reconstruction:** Lightweight U-Net baseline for synthetically supervised learning
-- **Data Utilities:** Synthetic undersampling, image quality metrics, format conversion
-- **Training Pipeline:** Complete PyTorch training infrastructure with TensorBoard logging
+- **Data Utilities:** Synthetic undersampling via kspace truncation and noise injection, image quality metrics, format conversion
+- **Training Pipeline:** Complete PyTorch training infrastructure with TensorBoard logging (in progress)
 
 **Key Features:**
-- 🚀 Configurable CLI tools for all major operations
-- 📊 Automatic 80/10/10 train/val/test splitting with reproducible seeds
-- 💾 Safe output management (never writes to repo directory)
+- 📊 Automatic 80/10/10 train/val/test splitting with reproducible seeds, default is 42 (of course)
 - 📈 Built-in metrics (PSNR, SSIM) and visualization
-- 🔬 Lightweight baseline model (~7.8M parameters) suitable for comparison studies
+- 🔬 Lightweight baseline model (~7.8M parameters)
 
 ---
 
@@ -30,7 +28,7 @@ This repository provides tools for:
 ```bash
 # Clone the repository
 cd "MSc Project"
-git clone <repository-url> synthsup-speechMRI-recon
+git clone  https://github.com/marioknicola/synthsup-speechMRI-recon
 cd synthsup-speechMRI-recon
 
 # Install dependencies
@@ -80,9 +78,9 @@ tensorboard --logdir ../outputs/logs
 ```
 synthsup-speechMRI-recon/
 ├── sense_reconstruction.py      # Classical SENSE reconstruction
-├── unet_model.py                # U-Net architecture (32 base filters)
+├── unet_model.py                # U-Net architecture (32 base filters as default)
 ├── dataset.py                   # PyTorch data loaders
-├── train_unet.py                # Training script with auto-split
+├── train_unet.py                # Training script with auto-split of 80/10/10
 ├── inference_unet.py            # Inference with metrics
 ├── utils/                       # Utility scripts
 │   ├── synthetic_undersampling.py
@@ -99,8 +97,8 @@ synthsup-speechMRI-recon/
 │   ├── QUICK_REFERENCE.md       # Command cheat sheet
 │   └── CHANGELOG.md             # Version history
 ├── .github/
-│   └── copilot-instructions.md  # AI assistant guide
-├── requirements.txt             # Python dependencies
+│   └── copilot-instructions.md  # guide for copilot
+├── requirements.txt             # dependencies
 └── README.md                    # This file
 ```
 
@@ -137,9 +135,9 @@ The pipeline uses a **80/10/10 automatic split** from synthetic training pairs:
 
 ## 🎓 Google Colab Training
 
-**Yes, you can train on Colab!** Here's how:
+**train on Colab**:
 
-### Option 1: Mount Google Drive (Recommended)
+### Option 1: Mount Google Drive
 
 ```python
 # 1. Mount Google Drive
@@ -166,7 +164,7 @@ drive.mount('/content/drive')
     --batch-size 4
 ```
 
-### Option 2: Direct Upload to Colab VM
+### Option 2: Direct Upload to Colab VM (easiest i think)
 
 ```python
 # 1. Upload data directly (smaller datasets)
@@ -181,7 +179,7 @@ uploaded = files.upload()  # Upload Synth_LR_nii.zip and HR_nii.zip
 !unzip HR_nii.zip -d /content/
 
 # 2. Clone and train
-!git clone <your-repo-url> synthsup-speechMRI-recon
+!git clone https://github.com/marioknicola/synthsup-speechMRI-recon
 %cd synthsup-speechMRI-recon
 !pip install -r requirements.txt
 
@@ -189,29 +187,8 @@ uploaded = files.upload()  # Upload Synth_LR_nii.zip and HR_nii.zip
     --input-dir /content/Synth_LR_nii \
     --target-dir /content/HR_nii \
     --output-dir /content/outputs \
-    --epochs 100 \
+    --epochs 100 \ 
     --batch-size 4
-```
-
-### Option 3: Use Colab's GPU Efficiently
-
-```python
-# Check GPU availability
-import torch
-print(f"GPU Available: {torch.cuda.is_available()}")
-print(f"GPU Name: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'None'}")
-
-# Monitor GPU during training
-!nvidia-smi
-
-# For Colab's T4 GPU (16GB), use:
-!python3 train_unet.py \
-    --input-dir <path> \
-    --target-dir <path> \
-    --output-dir <path> \
-    --batch-size 8 \
-    --base-filters 32 \
-    --epochs 100
 ```
 
 ### Tips for Colab Training:
@@ -231,6 +208,7 @@ print(f"GPU Name: {torch.cuda.get_device_name(0) if torch.cuda.is_available() el
    }
    setInterval(ClickConnect, 60000)
    ```
+^^^ not tried this
 4. **Use TPU (optional):** Colab also offers TPUs, but requires code modifications for PyTorch XLA
 5. **Expected Runtime:** 100 epochs on T4 GPU ≈ 4-6 hours (depends on dataset size)
 
@@ -256,13 +234,13 @@ python3 train_unet.py --base-filters 64  # ~31M parameters
 **Input Requirements:**
 - NIfTI format (.nii) for images
 - MATLAB .mat files for k-space data
-- Shape convention: (Ny=80, Nx=82, Nc=22 coils, Nf=100 frames)
-- Orientation: `rot90(k=-1, axes=(0,1))` + `flip(axis=1)`
+- Shape convention: (Ny=80, Nx=82, Nc=22 coils, Nf=100 frames) (frames for dynamic data)
+- Orientation: `rot90(k=-1, axes=(0,1))` + `flip(axis=1)` (to deal with strange nifti convention)
 
 **Output Locations:**
 - All outputs save to parent directory (`../`)
 - Never writes inside repository folder
-- Organizes into: `outputs/`, `reconstructions/`, `Dynamic_SENSE/`
+- Organises into: `outputs/`, `reconstructions/`, `Dynamic_SENSE/`
 
 ---
 
@@ -284,54 +262,6 @@ pip install -r requirements.txt --upgrade
 - Ensure consistent naming convention
 
 See [GETTING_STARTED.md](docs/GETTING_STARTED.md) for detailed troubleshooting.
-
----
-
-## 📝 Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@misc{synthsup-speechmri,
-  author = {Mario Knicola},
-  title = {Synthetically Supervised Deep Learning for Dynamic Speech MRI Reconstruction},
-  year = {2025},
-  publisher = {GitHub},
-  url = {https://github.com/marioknicola/synthsup-speechMRI-recon}
-}
-```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
----
-
-## 📧 Contact
-
-- **Author:** Mario Klitos Nicola
-- **Project:** MSc Thesis - Speech MRI Reconstruction
-- **Institution:** King's College London
-
----
-
-## 🙏 Acknowledgments
-
-- PyTorch team for the deep learning framework
-- NiBabel developers for NIfTI support
-- scikit-image for metrics implementation
 
 ---
 
