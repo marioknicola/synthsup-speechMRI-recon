@@ -234,12 +234,6 @@ print(f"GPU Name: {torch.cuda.get_device_name(0) if torch.cuda.is_available() el
 4. **Use TPU (optional):** Colab also offers TPUs, but requires code modifications for PyTorch XLA
 5. **Expected Runtime:** 100 epochs on T4 GPU ≈ 4-6 hours (depends on dataset size)
 
-### Colab Pro Advantages:
-- Longer runtimes (24h vs 12h)
-- Faster GPUs (V100, A100)
-- More RAM (25GB vs 12GB)
-- Background execution
-
 ---
 
 ## 🔧 Model Configuration
@@ -327,9 +321,9 @@ Contributions welcome! Please:
 
 ## 📧 Contact
 
-- **Author:** Mario Knicola
+- **Author:** Mario Klitos Nicola
 - **Project:** MSc Thesis - Speech MRI Reconstruction
-- **Institution:** [Your Institution]
+- **Institution:** King's College London
 
 ---
 
