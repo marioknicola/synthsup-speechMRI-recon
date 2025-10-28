@@ -1,6 +1,6 @@
 # 🚀 Quick Start: Training in Google Colab
 
-**Complete instructions for training the U-Net with k-space data in Google Colab.**
+**Complete instructions for training the U-Net in Google Colab.**
 
 ---
 
@@ -18,17 +18,8 @@ from google.colab import files
 import zipfile
 import os
 
-# Upload kspace_mat_FS.zip
-print("Upload kspace_mat_FS.zip...")
-uploaded = files.upload()
-
-# Extract
-with zipfile.ZipFile('kspace_mat_FS.zip', 'r') as zip_ref:
-    zip_ref.extractall('../')
-print(f"✓ Extracted kspace_mat_FS/ ({len(os.listdir('../kspace_mat_FS'))} files)")
-
 # Upload Synth_LR_nii.zip
-print("\nUpload Synth_LR_nii.zip...")
+print("Upload Synth_LR_nii.zip...")
 uploaded = files.upload()
 with zipfile.ZipFile('Synth_LR_nii.zip', 'r') as zip_ref:
     zip_ref.extractall('../')
@@ -47,7 +38,6 @@ print("\n✓ All data uploaded and extracted!")
 ### 2. Verify Data
 
 ```python
-!ls ../kspace_mat_FS/*.mat | wc -l  # Should be: 21
 !ls ../Synth_LR_nii/*.nii | wc -l   # Should be: 21
 !ls ../HR_nii/*.nii | wc -l         # Should be: 21
 ```
@@ -55,13 +45,12 @@ print("\n✓ All data uploaded and extracted!")
 ### 3. Train Model
 
 ```python
-!python3 train_unet_kspace.py \
+!python3 train_unet.py \
     --synth-lr-dir ../Synth_LR_nii \
     --hr-dir ../HR_nii \
-    --kspace-fs-dir ../kspace_mat_FS \
     --batch-size 8 \
     --epochs 100 \
-    --output-dir ../outputs_kspace \
+    --output-dir ../outputs \
     --num-workers 2
 ```
 
@@ -75,15 +64,13 @@ print("\n✓ All data uploaded and extracted!")
 
 Before starting Colab:
 
-1. **kspace_mat_FS.zip** (~500 MB) - 21 .mat files
-2. **Synth_LR_nii.zip** (~50 MB) - 21 .nii files  
-3. **HR_nii.zip** (~50 MB) - 21 .nii files
-4. *Optional:* **Dynamic_SENSE_padded.zip** (~100 MB) - Test data
+1. **Synth_LR_nii.zip** (~50 MB) - 21 .nii files  
+2. **HR_nii.zip** (~50 MB) - 21 .nii files
+3. *Optional:* **Dynamic_SENSE_padded.zip** (~100 MB) - Test data
 
 **How to create zips** (on your local machine):
 ```bash
 cd "MSc Project"
-zip -r kspace_mat_FS.zip kspace_mat_FS/
 zip -r Synth_LR_nii.zip Synth_LR_nii/
 zip -r HR_nii.zip HR_nii/
 zip -r Dynamic_SENSE_padded.zip Dynamic_SENSE_padded/
@@ -110,7 +97,7 @@ zip -r Dynamic_SENSE_padded.zip Dynamic_SENSE_padded/
 ### Output Files
 
 ```
-outputs_kspace/
+outputs/
 ├── checkpoints/
 │   ├── best_model.pth         # Best model (use this!)
 │   └── latest_model.pth        # Most recent
@@ -130,7 +117,7 @@ outputs_kspace/
 --batch-size 4  # or even 2
 ```
 
-### Problem: "No module named 'dataset_kspace'"
+### Problem: "No module named 'dataset'"
 
 **Solution**: Check you're in the repo directory
 
@@ -140,12 +127,12 @@ print(os.getcwd())  # Should be: /content/synthsup-speechMRI-recon
 %cd /content/synthsup-speechMRI-recon
 ```
 
-### Problem: "FileNotFoundError: kspace_mat_FS"
+### Problem: "FileNotFoundError: Synth_LR_nii"
 
 **Solution**: Verify data was extracted
 
 ```python
-!ls ../kspace_mat_FS/
+!ls ../Synth_LR_nii/
 # If empty, re-upload and extract the zip file
 ```
 
@@ -154,8 +141,8 @@ print(os.getcwd())  # Should be: /content/synthsup-speechMRI-recon
 **Solution**: Resume training
 
 ```python
-!python3 train_unet_kspace.py \
-    --resume ../outputs_kspace/checkpoints/latest_model.pth \
+!python3 train_unet.py \
+    --resume ../outputs/checkpoints/latest_model.pth \
     --epochs 200 \
     ...
 ```
@@ -187,7 +174,7 @@ Should show: `GPU: True`, `Device: Tesla T4`
 ### View Real-Time Logs
 
 ```python
-!tail -f ../outputs_kspace/training.log
+!tail -f ../outputs/training.log
 ```
 
 Press **Ctrl+C** to stop.
@@ -195,7 +182,7 @@ Press **Ctrl+C** to stop.
 ### Check Last 20 Lines
 
 ```python
-!tail -n 20 ../outputs_kspace/training.log
+!tail -n 20 ../outputs/training.log
 ```
 
 ### What to Look For
@@ -214,7 +201,7 @@ Good training shows:
 
 ```python
 !python3 inference_unet.py \
-    --checkpoint ../outputs_kspace/checkpoints/best_model.pth \
+    --checkpoint ../outputs/checkpoints/best_model.pth \
     --input-dir ../Dynamic_SENSE_padded \
     --output-dir ../reconstructions_dynamic \
     --compute-metrics \
@@ -225,7 +212,7 @@ Good training shows:
 
 ```python
 from google.colab import files
-files.download('../outputs_kspace/checkpoints/best_model.pth')
+files.download('../outputs/checkpoints/best_model.pth')
 ```
 
 Or access directly from Google Drive on your computer.
@@ -262,8 +249,7 @@ Or access directly from Google Drive on your computer.
 
 ## 📚 Full Documentation
 
-- **Complete Guide**: [`docs/KSPACE_TRAINING.md`](../docs/KSPACE_TRAINING.md)
-- **Detailed Colab Guide**: [`docs/COLAB_TRAINING_GUIDE.md`](../docs/COLAB_TRAINING_GUIDE.md)
+- **Complete Training Guide**: [`docs/COLAB_TRAINING_GUIDE.md`](../docs/COLAB_TRAINING_GUIDE.md)
 - **All Documentation**: [`docs/INDEX.md`](../docs/INDEX.md)
 
 ---
@@ -287,8 +273,7 @@ After training:
 ## 🆘 Need Help?
 
 1. Check **[Full Colab Guide](../docs/COLAB_TRAINING_GUIDE.md)** for detailed instructions
-2. Check **[K-Space Training Guide](../docs/KSPACE_TRAINING.md)** for technical details
-3. Check **[Troubleshooting](#-troubleshooting)** section above
+2. Check **[Troubleshooting](#-troubleshooting)** section above
 
 ---
 

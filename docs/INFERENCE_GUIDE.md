@@ -4,6 +4,20 @@ This guide explains how to test your trained U-Net model and visualize performan
 
 ---
 
+## 🎯 Quick Start
+
+```bash
+python3 inference_unet.py \
+    --checkpoint ../outputs/checkpoints/best_model.pth \
+    --input-dir ../Synth_LR_nii \
+    --target-dir ../HR_nii \
+    --test-indices ../outputs/test_indices.txt \
+    --output-dir ../reconstructions_test \
+    --compute-metrics --visualize
+```
+
+---
+
 ## 📥 Step 1: Get Your Trained Model
 
 ### From Google Colab:
@@ -79,6 +93,83 @@ python3 inference_unet.py \
 
 ---
 
+## 📊 Step 3: Understanding the Output
+
+---
+
+### For K-Space Training (train_unet_kspace.py) ⭐ **NEW**
+
+If you trained with the combined NIfTI + k-space dataset (42 samples), use the dedicated inference script:
+
+#### Option 1: Validation Set (Recommended) ⭐
+
+Test on the 20% validation samples (8-9 samples) that were held out during training:
+
+```bash
+python3 inference_unet_kspace.py \
+    --checkpoint ../outputs_kspace/checkpoints/best_model.pth \
+    --synth-lr-dir ../Synth_LR_nii \
+    --hr-dir ../HR_nii \
+    --kspace-fs-dir ../kspace_mat_FS \
+    --val-indices ../outputs_kspace/val_indices.txt \
+    --output-dir ../reconstructions_kspace_val \
+    --compute-metrics \
+    --visualize
+```
+
+**What this does:**
+- Recreates the combined dataset (same as training)
+- Loads validation indices from training
+- Tests on samples the model never saw
+- Reports metrics by source (NIfTI vs k-space)
+- Generates comparison visualizations
+
+**Expected output:**
+```
+Overall Metrics:
+  Average PSNR: 30.5 dB
+  Average SSIM: 0.8234
+
+NIfTI Pairs (4 samples):
+  Average PSNR: 30.2 dB
+  Average SSIM: 0.8156
+
+K-Space Samples (4 samples):
+  Average PSNR: 30.8 dB
+  Average SSIM: 0.8312
+```
+
+#### Option 2: Dynamic_SENSE (Independent Test)
+
+For k-space trained models, you can still test on Dynamic data using the standard script:
+
+```bash
+python3 inference_unet.py \
+    --checkpoint ../outputs_kspace/checkpoints/best_model.pth \
+    --input-dir ../Dynamic_SENSE_padded \
+    --output-dir ../reconstructions_kspace_dynamic \
+    --visualize
+```
+
+**Note:** This works because both scripts use the same model architecture - only the training data differs.
+
+---
+
+### ⚠️ Important: Validation Indices
+
+**Standard training** (`train_unet.py`):
+- Creates `../outputs/test_indices.txt`
+- 10% held-out test set
+
+**K-space training** (`train_unet_kspace.py`):
+- Creates `../outputs_kspace/val_indices.txt` ⭐ **NEW**
+- 20% validation set
+- Includes both NIfTI and k-space samples
+
+Make sure you use the correct indices file for your training type!
+
+---
+
 ## 📊 Step 3: Analyze Results
 
 ### Check Metrics Summary
@@ -145,25 +236,69 @@ print(f"Shape: {data.shape}")  # (H, W, num_frames)
 
 ## 🔍 Step 4: Compare Multiple Models (Optional)
 
+### Comparing Standard vs K-Space Training
+
+If you trained both models, compare their performance:
+
+```bash
+# Standard training (NIfTI only, 21 samples)
+python3 inference_unet.py \
+    --checkpoint ../outputs/checkpoints/best_model.pth \
+    --input-dir ../Synth_LR_nii \
+    --target-dir ../HR_nii \
+    --test-indices ../outputs/test_indices.txt \
+    --output-dir ../reconstructions_standard \
+    --compute-metrics
+
+# K-space training (NIfTI + k-space, 42 samples)
+python3 inference_unet_kspace.py \
+    --checkpoint ../outputs_kspace/checkpoints/best_model.pth \
+    --synth-lr-dir ../Synth_LR_nii \
+    --hr-dir ../HR_nii \
+    --kspace-fs-dir ../kspace_mat_FS \
+    --val-indices ../outputs_kspace/val_indices.txt \
+    --output-dir ../reconstructions_kspace \
+    --compute-metrics
+
+# Compare results
+echo "=== Standard Training (NIfTI only) ==="
+cat ../reconstructions_standard/metrics_summary.txt | grep "Average"
+
+echo ""
+echo "=== K-Space Training (NIfTI + k-space) ==="
+cat ../reconstructions_kspace/metrics_summary.txt | grep "Average"
+```
+
+**Expected improvement with k-space training:**
+- +1-2 dB PSNR
+- +0.02-0.03 SSIM
+
+### Comparing Different Configurations
+
+### Comparing Different Configurations
+
 If you trained multiple models with different configurations:
 
 ```bash
 # Baseline model (32 base filters)
-python3 inference_unet.py \
-    --checkpoint ../outputs/model_32filters.pth \
-    --input-dir ../Synth_LR_nii \
-    --target-dir ../HR_nii \
-    --test-indices ../outputs/test_indices.txt \
+python3 inference_unet_kspace.py \
+    --checkpoint ../outputs_kspace/model_32filters.pth \
+    --synth-lr-dir ../Synth_LR_nii \
+    --hr-dir ../HR_nii \
+    --kspace-fs-dir ../kspace_mat_FS \
+    --val-indices ../outputs_kspace/val_indices.txt \
     --output-dir ../reconstructions_baseline \
     --compute-metrics
 
 # Heavier model (64 base filters)
-python3 inference_unet.py \
-    --checkpoint ../outputs/model_64filters.pth \
-    --input-dir ../Synth_LR_nii \
-    --target-dir ../HR_nii \
-    --test-indices ../outputs/test_indices.txt \
+python3 inference_unet_kspace.py \
+    --checkpoint ../outputs_kspace/model_64filters.pth \
+    --synth-lr-dir ../Synth_LR_nii \
+    --hr-dir ../HR_nii \
+    --kspace-fs-dir ../kspace_mat_FS \
+    --val-indices ../outputs_kspace/val_indices.txt \
     --output-dir ../reconstructions_heavy \
+    --base-filters 64 \
     --compute-metrics
 
 # Compare results
@@ -262,7 +397,9 @@ print(f"Average PSNR: {np.mean(psnr_scores):.2f} dB")
 
 ## 📋 Common Inference Commands
 
-### Quick Test (Single Subject)
+### Standard Training (NIfTI only)
+
+**Quick Test (Single Subject)**
 ```bash
 python3 inference_unet.py \
     --checkpoint ../outputs/checkpoints/best_model.pth \
@@ -274,13 +411,64 @@ python3 inference_unet.py \
     --visualize
 ```
 
+**Test Set Evaluation**
+```bash
+python3 inference_unet.py \
+    --checkpoint ../outputs/checkpoints/best_model.pth \
+    --input-dir ../Synth_LR_nii \
+    --target-dir ../HR_nii \
+    --test-indices ../outputs/test_indices.txt \
+    --output-dir ../reconstructions_test \
+    --compute-metrics \
+    --visualize
+```
+
+### K-Space Training (NIfTI + k-space) ⭐ **NEW**
+
+**Validation Set Evaluation** (Recommended)
+```bash
+python3 inference_unet_kspace.py \
+    --checkpoint ../outputs_kspace/checkpoints/best_model.pth \
+    --synth-lr-dir ../Synth_LR_nii \
+    --hr-dir ../HR_nii \
+    --kspace-fs-dir ../kspace_mat_FS \
+    --val-indices ../outputs_kspace/val_indices.txt \
+    --output-dir ../reconstructions_kspace_val \
+    --compute-metrics \
+    --visualize
+```
+
+**Dynamic Data Test**
+```bash
+# Works for both training types
+python3 inference_unet.py \
+    --checkpoint ../outputs_kspace/checkpoints/best_model.pth \
+    --input-dir ../Dynamic_SENSE_padded \
+    --output-dir ../reconstructions_kspace_dynamic \
+    --visualize
+```
+
 ### Batch Processing (All Subjects)
+
+**Standard training:**
 ```bash
 python3 inference_unet.py \
     --checkpoint ../outputs/checkpoints/best_model.pth \
     --input-dir ../Synth_LR_nii \
     --target-dir ../HR_nii \
     --output-dir ../reconstructions_all \
+    --compute-metrics
+```
+
+**K-space training** - validation set only (recommended):
+```bash
+python3 inference_unet_kspace.py \
+    --checkpoint ../outputs_kspace/checkpoints/best_model.pth \
+    --synth-lr-dir ../Synth_LR_nii \
+    --hr-dir ../HR_nii \
+    --kspace-fs-dir ../kspace_mat_FS \
+    --val-indices ../outputs_kspace/val_indices.txt \
+    --output-dir ../reconstructions_kspace_val \
     --compute-metrics
 ```
 

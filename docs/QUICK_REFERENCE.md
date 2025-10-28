@@ -7,7 +7,7 @@ Your repository is fully configured with:
 ### 📁 **Core Scripts**
 - ✅ `sense_reconstruction.py` - Classical SENSE with configurable CLI
 - ✅ `unet_model.py` - Complete U-Net architecture (~31M parameters)
-- ✅ `dataset.py` - PyTorch data loaders (NIfTI + k-space)
+- ✅ `dataset.py` - PyTorch data loaders
 - ✅ `train_unet.py` - Training with separate validation sets
 - ✅ `inference_unet.py` - Inference with metrics
 - ✅ All utility scripts (PSNR_and_SSIM.py, niftNormaliser.py, etc.)
