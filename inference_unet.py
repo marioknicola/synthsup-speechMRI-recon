@@ -79,7 +79,7 @@ def load_model(checkpoint_path, device, in_channels=1, out_channels=1, base_filt
 
 
 def reconstruct_single_file(model, input_file, device, output_path=None, 
-                            normalize=True, apply_orientation=True):
+                            normalize=True, apply_orientation=False):
     """
     Reconstruct a single NIfTI file frame-by-frame.
     
@@ -149,7 +149,7 @@ def reconstruct_single_file(model, input_file, device, output_path=None,
 
 
 def visualize_comparison(input_img, recon_img, target_img=None, frame_idx=None, save_path=None):
-    """Visualize input, reconstruction, and optionally target."""
+    """Visualize input, reconstruction, and optionally target with SENSE orientation."""
     if frame_idx is not None:
         input_slice = input_img[:, :, frame_idx] if input_img.ndim == 3 else input_img
         recon_slice = recon_img[:, :, frame_idx] if recon_img.ndim == 3 else recon_img
@@ -158,6 +158,12 @@ def visualize_comparison(input_img, recon_img, target_img=None, frame_idx=None, 
         input_slice = input_img
         recon_slice = recon_img
         target_slice = target_img
+    
+    # Apply SENSE orientation convention: rot90(k=-1) + flip(axis=1)
+    input_slice = np.flip(np.rot90(input_slice, k=-1), axis=1)
+    recon_slice = np.flip(np.rot90(recon_slice, k=-1), axis=1)
+    if target_slice is not None:
+        target_slice = np.flip(np.rot90(target_slice, k=-1), axis=1)
     
     num_plots = 3 if target_img is not None else 2
     fig, axes = plt.subplots(1, num_plots, figsize=(5 * num_plots, 5))
@@ -216,7 +222,7 @@ def main():
                         help='Normalize inputs')
     parser.add_argument('--no-normalize', dest='normalize', action='store_false',
                         help='Disable normalization')
-    parser.add_argument('--apply-orientation', action='store_true', default=True,
+    parser.add_argument('--apply-orientation', action='store_true', default=False,
                         help='Apply orientation correction (rot90 + flip)')
     parser.add_argument('--compute-metrics', action='store_true', default=False,
                         help='Compute PSNR/SSIM metrics (requires --target-dir)')

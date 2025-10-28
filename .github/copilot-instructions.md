@@ -126,6 +126,7 @@ python3 inference_unet.py --checkpoint ../outputs/checkpoints/best_model.pth \
 - Implement learning rate warmup or cosine annealing in `train_unet.py`.
 - Add k-space data consistency layer enforcement during U-Net inference for physics-guided reconstruction (see `DataConsistencyLayer` in `unet_model.py`).
 - Create cross-validation splits for more robust model evaluation.
+- Create .md files in `docs/` for any new scripts or utilities added to the repo. And to teach users how to use them and how they work.
 
 ## Quick checklist for code edits / PRs
 - Preserve variable names when altering MAT loading (`kspace`, `coilmap`) or update all call sites.
@@ -151,5 +152,7 @@ python3 inference_unet.py --checkpoint ../outputs/checkpoints/best_model.pth \
 6. Inference: `inference_unet.py` applies trained model to held-out test set or Dynamic_SENSE data
 
 **Note:** More training data will be added to Synth_LR_nii/HR_nii over time. The 80/10/10 split ensures consistent evaluation.
+
+**Note:** All .md files should be in docs except Readme and Changelog.
 
 If any part is unclear or you want these instructions adapted (e.g., add more detailed training tips, or add smoke tests), tell me which change you prefer and I'll update this file accordingly.

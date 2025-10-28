@@ -48,10 +48,20 @@ python3 sense_reconstruction.py \
 
 **2. Train U-Net (80/10/10 automatic split):**
 ```bash
+# Standard training (pre-computed NIfTI pairs)
 python3 train_unet.py \
     --input-dir ../Synth_LR_nii \
     --target-dir ../HR_nii \
     --output-dir ../outputs \
+    --epochs 100 \
+    --batch-size 4
+
+# Enhanced training (with k-space undersampling)
+python3 train_unet_kspace.py \
+    --synth-lr-dir ../Synth_LR_nii \
+    --hr-dir ../HR_nii \
+    --kspace-fs-dir ../kspace_mat_FS \
+    --output-dir ../outputs_kspace \
     --epochs 100 \
     --batch-size 4
 ```
@@ -79,8 +89,11 @@ tensorboard --logdir ../outputs/logs
 synthsup-speechMRI-recon/
 ├── sense_reconstruction.py      # Classical SENSE reconstruction
 ├── unet_model.py                # U-Net architecture (32 base filters as default)
-├── dataset.py                   # PyTorch data loaders
-├── train_unet.py                # Training script with auto-split of 80/10/10
+├── unet_with_dc.py              # U-Net with data consistency layer
+├── dataset.py                   # PyTorch data loaders (NIfTI pairs)
+├── dataset_kspace.py            # Enhanced dataset with k-space undersampling
+├── train_unet.py                # Training script (NIfTI pairs, 80/10/10 split)
+├── train_unet_kspace.py         # Enhanced training (NIfTI + k-space, 80/10/10 split)
 ├── inference_unet.py            # Inference with metrics
 ├── utils/                       # Utility scripts
 │   ├── synthetic_undersampling.py
@@ -94,6 +107,8 @@ synthsup-speechMRI-recon/
 │   ├── GETTING_STARTED.md       # Step-by-step tutorial
 │   ├── UNET_README.md           # Quick reference
 │   ├── UNET_ARCHITECTURE.md     # Architecture details
+│   ├── KSPACE_TRAINING_GUIDE.md # K-space training guide (NEW!)
+│   ├── DATA_CONSISTENCY_GUIDE.md # Data consistency implementation
 │   ├── QUICK_REFERENCE.md       # Command cheat sheet
 │   └── CHANGELOG.md             # Version history
 ├── .github/
@@ -108,6 +123,7 @@ synthsup-speechMRI-recon/
 
 - **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete tutorial from setup to inference
 - **[Inference Guide](docs/INFERENCE_GUIDE.md)** - Testing trained models and visualization
+- **[Data Consistency Guide](docs/DATA_CONSISTENCY_GUIDE.md)** - Physics-guided reconstruction with k-space enforcement
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands and workflows
 - **[U-Net Documentation](docs/UNET_README.md)** - Daily usage reference
 - **[Architecture Details](docs/UNET_ARCHITECTURE.md)** - Technical deep dive

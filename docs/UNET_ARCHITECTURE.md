@@ -17,6 +17,8 @@ U-Net is a convolutional neural network architecture originally designed for bio
 
 ## Architecture Diagram
 
+### High-Level Structure
+
 ```
 Input (1, H, W)
       ↓
@@ -67,6 +69,204 @@ Input (1, H, W)
             ↓
     Output (1, H, W)
 ```
+
+### Detailed Layer-by-Layer Breakdown with Exact Dimensions
+
+**For input shape: (1, 312, 410)** using `base_filters=32` (default):
+
+```
+INPUT LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Shape: (1, 312, 410)     Channels: 1      Params: 0
+
+
+ENCODER PATH (Contracting)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Inc] Initial Double Convolution
+├─ Conv2d(1 → 32, 3×3, pad=1)    → (32, 312, 410)
+├─ BatchNorm2d(32)                → (32, 312, 410)
+├─ ReLU                           → (32, 312, 410)
+├─ Conv2d(32 → 32, 3×3, pad=1)   → (32, 312, 410)
+├─ BatchNorm2d(32)                → (32, 312, 410)
+└─ ReLU                           → (32, 312, 410) ────┐
+   Parameters: 1,856                                    │ Skip connection
+                                                        │
+[Down1] First Downsampling                              │
+├─ MaxPool2d(2×2)                 → (32, 156, 205)     │
+├─ Conv2d(32 → 64, 3×3, pad=1)   → (64, 156, 205)     │
+├─ BatchNorm2d(64)                → (64, 156, 205)     │
+├─ ReLU                           → (64, 156, 205)     │
+├─ Conv2d(64 → 64, 3×3, pad=1)   → (64, 156, 205)     │
+├─ BatchNorm2d(64)                → (64, 156, 205)     │
+└─ ReLU                           → (64, 156, 205) ────┼──┐
+   Parameters: 37,376                                  │  │
+                                                        │  │
+[Down2] Second Downsampling                             │  │
+├─ MaxPool2d(2×2)                 → (64, 78, 102)      │  │
+├─ Conv2d(64 → 128, 3×3, pad=1)  → (128, 78, 102)     │  │
+├─ BatchNorm2d(128)               → (128, 78, 102)     │  │
+├─ ReLU                           → (128, 78, 102)     │  │
+├─ Conv2d(128 → 128, 3×3, pad=1) → (128, 78, 102)     │  │
+├─ BatchNorm2d(128)               → (128, 78, 102)     │  │
+└─ ReLU                           → (128, 78, 102) ────┼──┼──┐
+   Parameters: 148,224                                 │  │  │
+                                                        │  │  │
+[Down3] Third Downsampling                              │  │  │
+├─ MaxPool2d(2×2)                 → (128, 39, 51)      │  │  │
+├─ Conv2d(128 → 256, 3×3, pad=1) → (256, 39, 51)      │  │  │
+├─ BatchNorm2d(256)               → (256, 39, 51)      │  │  │
+├─ ReLU                           → (256, 39, 51)      │  │  │
+├─ Conv2d(256 → 256, 3×3, pad=1) → (256, 39, 51)      │  │  │
+├─ BatchNorm2d(256)               → (256, 39, 51)      │  │  │
+└─ ReLU                           → (256, 39, 51) ─────┼──┼──┼──┐
+   Parameters: 591,360                                 │  │  │  │
+                                                        │  │  │  │
+[Down4] Fourth Downsampling (Bottleneck)                │  │  │  │
+├─ MaxPool2d(2×2)                 → (256, 19, 25)      │  │  │  │
+├─ Conv2d(256 → 256, 3×3, pad=1) → (256, 19, 25)      │  │  │  │
+├─ BatchNorm2d(256)               → (256, 19, 25)      │  │  │  │
+├─ ReLU                           → (256, 19, 25)      │  │  │  │
+├─ Conv2d(256 → 256, 3×3, pad=1) → (256, 19, 25)      │  │  │  │
+├─ BatchNorm2d(256)               → (256, 19, 25)      │  │  │  │
+└─ ReLU                           → (256, 19, 25)      │  │  │  │
+   Parameters: 591,360           ▲ BOTTLENECK          │  │  │  │
+                                 (deepest layer)       │  │  │  │
+                                                        │  │  │  │
+DECODER PATH (Expanding)                                │  │  │  │
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │  │  │
+                                                        │  │  │  │
+[Up1] First Upsampling                                  │  │  │  │
+├─ Upsample(2×, bilinear)         → (256, 38, 50)      │  │  │  │
+├─ Crop to match                  → (256, 39, 51)      │  │  │  │
+├─ Concatenate with Down3 ←───────────────────────────────┘  │  │
+│  (256 + 256)                    → (512, 39, 51)         │  │
+├─ Conv2d(512 → 128, 3×3, pad=1) → (128, 39, 51)         │  │
+├─ BatchNorm2d(128)               → (128, 39, 51)         │  │
+├─ ReLU                           → (128, 39, 51)         │  │
+├─ Conv2d(128 → 128, 3×3, pad=1) → (128, 39, 51)         │  │
+├─ BatchNorm2d(128)               → (128, 39, 51)         │  │
+└─ ReLU                           → (128, 39, 51)         │  │
+   Parameters: 591,360                                    │  │
+                                                           │  │
+[Up2] Second Upsampling                                    │  │
+├─ Upsample(2×, bilinear)         → (128, 78, 102)        │  │
+├─ Concatenate with Down2 ←─────────────────────────────────┘  │
+│  (128 + 128)                    → (256, 78, 102)          │
+├─ Conv2d(256 → 64, 3×3, pad=1)  → (64, 78, 102)          │
+├─ BatchNorm2d(64)                → (64, 78, 102)          │
+├─ ReLU                           → (64, 78, 102)          │
+├─ Conv2d(64 → 64, 3×3, pad=1)   → (64, 78, 102)          │
+├─ BatchNorm2d(64)                → (64, 78, 102)          │
+└─ ReLU                           → (64, 78, 102)          │
+   Parameters: 148,224                                     │
+                                                            │
+[Up3] Third Upsampling                                      │
+├─ Upsample(2×, bilinear)         → (64, 156, 204)         │
+├─ Crop to match                  → (64, 156, 205)         │
+├─ Concatenate with Down1 ←───────────────────────────────────┘
+│  (64 + 64)                      → (128, 156, 205)
+├─ Conv2d(128 → 32, 3×3, pad=1)  → (32, 156, 205)
+├─ BatchNorm2d(32)                → (32, 156, 205)
+├─ ReLU                           → (32, 156, 205)
+├─ Conv2d(32 → 32, 3×3, pad=1)   → (32, 156, 205)
+├─ BatchNorm2d(32)                → (32, 156, 205)
+└─ ReLU                           → (32, 156, 205)
+   Parameters: 37,376
+
+[Up4] Fourth Upsampling
+├─ Upsample(2×, bilinear)         → (32, 312, 410)
+├─ Concatenate with Inc ←─────────────────────────────────────┘
+│  (32 + 32)                      → (64, 312, 410)
+├─ Conv2d(64 → 32, 3×3, pad=1)   → (32, 312, 410)
+├─ BatchNorm2d(32)                → (32, 312, 410)
+├─ ReLU                           → (32, 312, 410)
+├─ Conv2d(32 → 32, 3×3, pad=1)   → (32, 312, 410)
+├─ BatchNorm2d(32)                → (32, 312, 410)
+└─ ReLU                           → (32, 312, 410)
+   Parameters: 18,752
+
+
+OUTPUT LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[OutConv] Final 1×1 Convolution
+├─ Conv2d(32 → 1, 1×1)           → (1, 312, 410)
+└─ No activation (linear output)  → (1, 312, 410)
+   Parameters: 33
+
+
+OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Shape: (1, 312, 410)     Channels: 1
+
+TOTAL PARAMETERS: ~7.8M (base_filters=32)
+```
+
+### Key Dimension Changes
+
+| Layer | Shape | Channels | Spatial Size | Reduction |
+|-------|-------|----------|--------------|-----------|
+| **Input** | (1, 312, 410) | 1 | 312×410 | - |
+| **Inc** | (32, 312, 410) | 32 | 312×410 | ×1 |
+| **Down1** | (64, 156, 205) | 64 | 156×205 | ×1/2 |
+| **Down2** | (128, 78, 102) | 128 | 78×102 | ×1/4 |
+| **Down3** | (256, 39, 51) | 256 | 39×51 | ×1/8 |
+| **Down4** | (256, 19, 25) | 256 | 19×25 | ×1/16 |
+| **Up1** | (128, 39, 51) | 128 | 39×51 | ×1/8 |
+| **Up2** | (64, 78, 102) | 64 | 78×102 | ×1/4 |
+| **Up3** | (32, 156, 205) | 32 | 156×205 | ×1/2 |
+| **Up4** | (32, 312, 410) | 32 | 312×410 | ×1 |
+| **Output** | (1, 312, 410) | 1 | 312×410 | ×1 |
+
+### Skip Connection Details
+
+```
+Encoder → Decoder Connections:
+
+Inc (32, 312, 410) ─────────────→ Up4 → Concat → (64, 312, 410)
+                                            ↓
+                                    DoubleConv(64→32)
+                                            ↓
+                                      (32, 312, 410)
+
+Down1 (64, 156, 205) ───────────→ Up3 → Concat → (128, 156, 205)
+                                            ↓
+                                    DoubleConv(128→32)
+                                            ↓
+                                      (32, 156, 205)
+
+Down2 (128, 78, 102) ───────────→ Up2 → Concat → (256, 78, 102)
+                                            ↓
+                                    DoubleConv(256→64)
+                                            ↓
+                                      (64, 78, 102)
+
+Down3 (256, 39, 51) ────────────→ Up1 → Concat → (512, 39, 51)
+                                            ↓
+                                    DoubleConv(512→128)
+                                            ↓
+                                      (128, 39, 51)
+```
+
+### For base_filters=64 (Heavier Variant)
+
+Same architecture but with doubled channels:
+
+| Layer | Shape | Channels | Parameters |
+|-------|-------|----------|------------|
+| **Input** | (1, 312, 410) | 1 | - |
+| **Inc** | (64, 312, 410) | 64 | 7,424 |
+| **Down1** | (128, 156, 205) | 128 | 148,992 |
+| **Down2** | (256, 78, 102) | 256 | 591,360 |
+| **Down3** | (512, 39, 51) | 512 | 2,360,832 |
+| **Down4** | (512, 19, 25) | 512 | 2,360,832 |
+| **Up1** | (256, 39, 51) | 256 | 2,360,832 |
+| **Up2** | (128, 78, 102) | 128 | 591,360 |
+| **Up3** | (64, 156, 205) | 64 | 148,992 |
+| **Up4** | (64, 312, 410) | 64 | 74,944 |
+| **Output** | (1, 312, 410) | 1 | 65 |
+| **TOTAL** | - | - | **~31M** |
 
 ## Detailed Component Breakdown
 
@@ -220,7 +420,7 @@ nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
 - More parameters
 - Risk of checkerboard artifacts
 
-## Data Consistency Layer (Optional)
+## Data Consistency Layer (Optional) [and not tried yet as of 27/10/2025]
 
 Physics-guided constraint for k-space enforcement:
 

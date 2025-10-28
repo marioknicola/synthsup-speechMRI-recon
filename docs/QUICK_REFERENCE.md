@@ -261,21 +261,6 @@ python3 inference_unet.py \
 
 ## 🎓 Next Steps
 
-### Short Term (Next Few Days)
-1. ✅ Read GETTING_STARTED.md fully
-2. ✅ Verify all data exists
-3. ✅ Run smoke tests
-4. ✅ Start training (10 epochs test)
-5. ✅ Review first results
-
-### Medium Term (Next Week)
-1. Complete 100-epoch training
-2. Run full inference on test set
-3. Analyze PSNR/SSIM metrics
-4. Generate visualizations
-5. Compare with SENSE baseline
-
-### Long Term (Project Goals)
 1. Experiment with hyperparameters
 2. Try different loss weights
 3. Add data augmentation
@@ -364,4 +349,4 @@ Average SSIM: 0.8890
 
 **Last Updated:** October 27, 2025  
 **Repository:** synthsup-speechMRI-recon  
-**Author:** Mario Knicola (with AI assistance)
+**Author:** Mario K Nicola

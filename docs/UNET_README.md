@@ -8,7 +8,6 @@ The pipeline learns to reconstruct fully-sampled MRI images from undersampled/al
 
 **Training Strategy:**
 - **Training data:** `../Synth_LR_nii/` (input) → `../HR_nii/` (target)
-- **Validation data:** `../Dynamic_SENSE/` (input) → `../Dynamic_SENSE_padded/` (target)
 
 **Key Components:**
 - `unet_model.py` - U-Net architecture with optional data consistency
@@ -16,7 +15,7 @@ The pipeline learns to reconstruct fully-sampled MRI images from undersampled/al
 - `train_unet.py` - Training script with L1+SSIM loss
 - `inference_unet.py` - Inference with metrics and visualization
 
-## ⚠️ Important: Output Directory Convention
+## ⚠️ Output Directory Convention
 
 **NEVER save outputs inside the `synthsup-speechMRI-recon/` repository folder!**
 
@@ -35,13 +34,12 @@ pip install -r requirements.txt
 ### 2. Prepare Training Data
 
 **Your data should already exist in the parent directory:**
-
+image pairs
 - `../Synth_LR_nii/` - Training inputs (synthetic low-resolution)
 - `../HR_nii/` - Training targets (high-resolution ground truth)
-- `../Dynamic_SENSE/` - Validation inputs (SENSE reconstructions)
-- `../Dynamic_SENSE_padded/` - Validation targets (padded SENSE)
 
-**If you need to generate SENSE validation data:**
+
+**For SENSE recon:**
 ```bash
 python3 sense_reconstruction.py --kspace ../kspace_mat_US/kspace_Subject0026_vv.mat \
                                 --coilmap ../sensitivity_maps/sens_Subject0026_Exam17853_80x82x100_nC22.mat \
@@ -51,10 +49,10 @@ python3 sense_reconstruction.py --kspace ../kspace_mat_US/kspace_Subject0026_vv.
 ```
 
 This creates:
-- `../Dynamic_SENSE/` - Undersampled reconstructions
+- `../Dynamic_SENSE/` - SENSE reconstructions unpadded
 - `../Synth_LR_nii/` - Synthetically undersampled inputs
 - `../HR_nii/` - High-resolution ground truth targets
-- `../Dynamic_SENSE/` - Real SENSE reconstructions (reserved for final testing)
+- `../Dynamic_SENSE_padded/` - SENSE reconstructions padded to HR size
 
 ### 3. Train the U-Net (80/10/10 split from synthetic pairs)
 
@@ -105,7 +103,7 @@ python3 inference_unet.py --checkpoint ../outputs/checkpoints/best_model.pth \
 - Output: Reconstructed magnitude images (1, H, W)
 - Default: 32 base filters (~7.8M parameters) - lightweight baseline
 - Loss: Combined L1 (84%) + SSIM (16%)
-- Optimizer: Adam with ReduceLROnPlateau scheduling
+- Optimiser: Adam with ReduceLROnPlateau scheduling
 
 **Key Features:**
 - Skip connections for preserving fine details
