@@ -27,14 +27,14 @@ from dataset import get_dataloaders
 
 class CombinedLoss(nn.Module):
     """
-    Combined loss function: L1 + SSIM loss.
+    Combined loss function: L2 (MSE) + SSIM loss.
     
-    L1 loss for pixel-wise accuracy + SSIM for structural similarity.
+    L2 loss for pixel-wise accuracy + SSIM for structural similarity.
     """
-    def __init__(self, alpha=0.84):
+    def __init__(self, alpha=0.7):
         super().__init__()
         self.alpha = alpha
-        self.l1_loss = nn.L1Loss()
+        self.l2_loss = nn.MSELoss()
     
     def ssim_loss(self, pred, target, window_size=11):
         """Compute SSIM loss (1 - SSIM)."""
@@ -58,9 +58,9 @@ class CombinedLoss(nn.Module):
         return 1 - ssim.mean()
     
     def forward(self, pred, target):
-        l1 = self.l1_loss(pred, target)
+        l2 = self.l2_loss(pred, target)
         ssim = self.ssim_loss(pred, target)
-        return self.alpha * l1 + (1 - self.alpha) * ssim
+        return self.alpha * l2 + (1 - self.alpha) * ssim
 
 
 def train_epoch(model, dataloader, criterion, optimizer, device, epoch):
@@ -342,8 +342,8 @@ def main():
                         help='Learning rate')
     parser.add_argument('--weight-decay', type=float, default=1e-5,
                         help='Weight decay for optimizer')
-    parser.add_argument('--loss-alpha', type=float, default=0.84,
-                        help='Weight for L1 loss in combined loss (1-alpha for SSIM)')
+    parser.add_argument('--loss-alpha', type=float, default=0.7,
+                        help='Weight for L2 loss in combined loss (1-alpha for SSIM, default: 0.7 for 30%% SSIM)')
     parser.add_argument('--train-split', type=float, default=0.8,
                         help='Fraction of data to use for training (only used if val-*-dir not provided)')
     

@@ -1,9 +1,26 @@
 # U-Net Architecture Drawing Guide
 
+## Current Training Configuration
+```
+Base filters:     32
+Batch size:       2
+Epochs:           200
+Loss function:    70% L2 (MSE) + 30% SSIM
+Learning rate:    0.0001
+Weight decay:     1e-05
+Upsampling:       Bilinear interpolation
+Input shape:      312 × 410 × 1
+Output shape:     312 × 410 × 1
+Total parameters: 4,317,825 (~4.3M trainable)
+Device:           CUDA (GPU)
+```
+
+---
+
 ## Architecture Overview
 - **Type**: 5-level U-Net with skip connections
 - **Base filters**: 32
-- **Total parameters**: ~1.9M
+- **Total parameters**: 4,317,825 (~4.3M)
 - **Upsampling method**: Bilinear interpolation
 
 ---
