@@ -51,6 +51,12 @@ class MRIReconstructionDataset(Dataset):
         print(f"Found {len(self.input_files)} input files")
         print(f"Found {len(self.target_files)} target files")
         
+        # Compute global normalization statistics if normalizing
+        self.norm_stats = {}
+        if self.normalize:
+            print("Computing normalization statistics...")
+            self._compute_normalization_stats()
+        
         # Build frame index: list of (file_idx, frame_idx) tuples
         self.frame_index = []
         for file_idx, input_file in enumerate(self.input_files):
@@ -77,6 +83,19 @@ class MRIReconstructionDataset(Dataset):
         
         print(f"Total frames in dataset: {len(self.frame_index)}")
     
+    def _compute_normalization_stats(self):
+        """Compute per-file min/max for consistent normalization."""
+        for file_idx, (input_file, target_file) in enumerate(zip(self.input_files, self.target_files)):
+            input_img = nib.load(input_file).get_fdata()
+            target_img = nib.load(target_file).get_fdata()
+            
+            self.norm_stats[file_idx] = {
+                'input_min': float(np.min(input_img)),
+                'input_max': float(np.max(input_img)),
+                'target_min': float(np.min(target_img)),
+                'target_max': float(np.max(target_img))
+            }
+    
     def __len__(self):
         return len(self.frame_index)
     
@@ -99,8 +118,8 @@ class MRIReconstructionDataset(Dataset):
         
         # Normalize to [0, 1] if requested
         if self.normalize:
-            input_frame = self._normalize(input_frame)
-            target_frame = self._normalize(target_frame)
+            input_frame = self._normalize(input_frame, file_idx, 'input')
+            target_frame = self._normalize(target_frame, file_idx, 'target')
         
         # Convert to torch tensors with channel dimension: (1, H, W)
         input_tensor = torch.from_numpy(input_frame).float().unsqueeze(0)
@@ -119,14 +138,27 @@ class MRIReconstructionDataset(Dataset):
             'filename': os.path.basename(self.input_files[file_idx])
         }
     
-    def _normalize(self, img):
-        """Normalize image to [0, 1] range."""
-        img_min = np.min(img)
-        img_max = np.max(img)
+    def _normalize(self, img, file_idx, data_type='input'):
+        """
+        Normalize image to [0, 1] range using per-file statistics.
+        
+        Args:
+            img: Image array to normalize
+            file_idx: Index of the file this frame belongs to
+            data_type: 'input' or 'target'
+        """
+        if file_idx in self.norm_stats:
+            img_min = self.norm_stats[file_idx][f'{data_type}_min']
+            img_max = self.norm_stats[file_idx][f'{data_type}_max']
+        else:
+            # Fallback to per-frame normalization
+            img_min = np.min(img)
+            img_max = np.max(img)
+        
         if img_max - img_min > 0:
             return (img - img_min) / (img_max - img_min)
         else:
-            return img
+            return np.zeros_like(img)
 
 
 class KSpaceDataset(Dataset):

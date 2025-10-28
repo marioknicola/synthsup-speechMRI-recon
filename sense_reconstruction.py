@@ -184,7 +184,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='SENSE reconstruction with configurable paths')
     parser.add_argument('--kspace', type=str, default='../kspace_mat_US/kspace_Subject0026_vv.mat',
                         help='Path to k-space MAT file')
-    parser.add_argument('--coilmap', type=str, default='../sensitivity_maps/sens_Subject0026_Exam17853_80x82x100_nC22.mat',
+    parser.add_argument('--coilmap', type=str, default='../sensitivity_maps_95f/sens_Subject0026_Exam17853_80x82x95_nC22.mat',
                         help='Path to coil sensitivity map MAT file')
     parser.add_argument('--output-dir', type=str, default='..',
                         help='Output directory for NIfTI files (default: parent directory ..)')

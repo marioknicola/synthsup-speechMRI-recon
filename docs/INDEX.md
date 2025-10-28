@@ -1,222 +1,169 @@
 # Documentation Index
 
-Quick reference for all project documentation.
+Complete reference for synthsup-speechMRI-recon project documentation.
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-**New to the project?** → [`GETTING_STARTED.md`](GETTING_STARTED.md)
-
-**Training in Colab?** → [`COLAB_TRAINING_GUIDE.md`](COLAB_TRAINING_GUIDE.md)
-
-**K-space training details?** → [`KSPACE_TRAINING.md`](KSPACE_TRAINING.md)
+**New to the project?** → [`GETTING_STARTED.md`](GETTING_STARTED.md)  
+**Training in Google Colab?** → [`USE_IN_COLAB.md`](USE_IN_COLAB.md)  
+**Want to understand U-Net?** → [`README.md`](README.md)
 
 ---
 
-## Core Documentation
-
-### Training & Data
+## 📚 Core Documentation
 
 | Document | Description |
 |----------|-------------|
-| [`KSPACE_TRAINING.md`](KSPACE_TRAINING.md) | Complete guide for training with k-space data |
-| [`COLAB_TRAINING_GUIDE.md`](COLAB_TRAINING_GUIDE.md) | Step-by-step Colab training instructions |
-| [`COLAB_QUICKSTART.md`](COLAB_QUICKSTART.md) | Fast-track Colab training (copy-paste ready) |
-| [`DATA_CONSISTENCY_GUIDE.md`](DATA_CONSISTENCY_GUIDE.md) | Data consistency overview & theory |
-| [`DATA_CONSISTENCY_COLAB.md`](DATA_CONSISTENCY_COLAB.md) | **Data consistency in Colab (step-by-step)** |
-
-### Model & Architecture
-
-| Document | Description |
-|----------|-------------|
-| [`UNET_ARCHITECTURE.md`](UNET_ARCHITECTURE.md) | U-Net architecture details |
-| [`UNET_README.md`](UNET_README.md) | U-Net training reference |
-
-### Usage & Inference
-
-| Document | Description |
-|----------|-------------|
-| [`INFERENCE_GUIDE.md`](INFERENCE_GUIDE.md) | Running inference on test data |
-| [`GETTING_STARTED.md`](GETTING_STARTED.md) | Initial setup and usage |
-
-### Reference
-
-| Document | Description |
-|----------|-------------|
-| [`QUICK_REFERENCE.md`](QUICK_REFERENCE.md) | Command reference |
-| [`CHANGELOG.md`](CHANGELOG.md) | Version history |
+| **[GETTING_STARTED.md](GETTING_STARTED.md)** | Step-by-step local setup and usage guide |
+| **[USE_IN_COLAB.md](USE_IN_COLAB.md)** | Complete Google Colab training guide |
+| **[README.md](README.md)** | U-Net architecture and training details |
+| **[INFERENCE.md](INFERENCE.md)** | Running inference and evaluation |
+| **[DATA_CONSISTENCY.md](DATA_CONSISTENCY.md)** | Physics-based reconstruction constraints (optional) |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history and updates |
 
 ---
 
-## Training Decision Tree
+## 🎯 Common Tasks
 
-```
-Do you want to train the model?
-│
-├─ YES → Do you have k-space data?
-│        │
-│        ├─ YES → Use train_unet_kspace.py
-│        │        → See: KSPACE_TRAINING.md
-│        │        → Colab: COLAB_TRAINING_GUIDE.md
-│        │
-│        └─ NO  → Use train_unet.py
-│                 → See: UNET_README.md
-│
-└─ NO  → Run inference only
-         → Use inference_unet.py
-         → See: INFERENCE_GUIDE.md
-```
-
----
-
-## Common Tasks
-
-### Train Model with K-Space (Recommended)
-
-```bash
-python3 train_unet_kspace.py \
-    --synth-lr-dir ../Synth_LR_nii \
-    --hr-dir ../HR_nii \
-    --kspace-fs-dir ../kspace_mat_FS \
-    --batch-size 4 \
-    --epochs 100
-```
-
-**Guide**: [`KSPACE_TRAINING.md`](KSPACE_TRAINING.md)  
-**Colab**: [`COLAB_TRAINING_GUIDE.md`](COLAB_TRAINING_GUIDE.md)
-
-### Train Model (Standard)
+### Train Model Locally
 
 ```bash
 python3 train_unet.py \
     --input-dir ../Synth_LR_nii \
     --target-dir ../HR_nii \
-    --epochs 100
+    --epochs 100 \
+    --batch-size 4
 ```
 
-**Guide**: [`UNET_README.md`](UNET_README.md)
+**See:** [README.md](README.md) for full training details
+
+### Train in Google Colab
+
+```python
+# Complete script in USE_IN_COLAB.md
+!git clone https://github.com/YOUR_USERNAME/synthsup-speechMRI-recon.git
+# ... upload data ...
+!python3 train_unet.py --input-dir ../data/Synth_LR_nii --target-dir ../data/HR_nii
+```
+
+**See:** [USE_IN_COLAB.md](USE_IN_COLAB.md) for step-by-step guide
 
 ### Run Inference
 
 ```bash
 python3 inference_unet.py \
     --checkpoint ../outputs/checkpoints/best_model.pth \
-    --input-dir ../Dynamic_SENSE_padded \
+    --input-dir ../Dynamic_SENSE_padded_95f \
     --output-dir ../reconstructions \
     --compute-metrics \
     --visualize
 ```
 
-**Guide**: [`INFERENCE_GUIDE.md`](INFERENCE_GUIDE.md)
+**See:** [INFERENCE.md](INFERENCE.md) for full inference options
 
 ---
 
-## Key Concepts
+## 🗂️ Key Concepts
 
-### Data Sources
+### Data Structure
 
-1. **NIfTI Pairs** (`Synth_LR_nii` + `HR_nii`)
-   - Pre-computed synthetic undersampling
-   - 21 static image pairs
-   
-2. **K-Space** (`kspace_mat_FS`)
-   - Fully-sampled k-space
-   - On-the-fly SENSE undersampling
-   - 21 k-space files
-   
-3. **Dynamic Test Data** (`Dynamic_SENSE_padded`)
-   - Real undersampled sequences
-   - 100 frames × 4 subjects
-   - For testing only (not training)
+```
+MSc Project/
+├── synthsup-speechMRI-recon/       # Repository (code only)
+│   ├── unet_model.py
+│   ├── dataset.py
+│   ├── train_unet.py
+│   ├── inference_unet.py
+│   └── docs/
+│
+├── Synth_LR_nii/                   # Training input (21 files)
+├── HR_nii/                         # Training target (21 files)
+├── Dynamic_SENSE_padded_95f/       # Test data (43 files × 95 frames)
+│
+├── outputs/                        # Training outputs
+│   ├── checkpoints/
+│   ├── logs/
+│   └── training.log
+│
+└── reconstructions/                # Inference outputs
+```
 
-### Training Approaches
+### Data Normalization
 
-| Approach | Data | Samples | Best For |
-|----------|------|---------|----------|
-| **Standard** | NIfTI only | 21 | Quick baseline |
-| **Enhanced** | NIfTI + k-space | 42 | Better performance |
+**Per-file [0, 1] normalization** (automatic):
+- Computes min/max for entire file at initialization
+- All frames use same normalization statistics
+- Prevents frame-to-frame intensity variations
+- Automatic denormalization during inference
 
-**Recommendation**: Use enhanced training (k-space) for better results.
+**Benefits:**
+- Solves intensity mismatch between datasets
+- Prevents negative values in predictions
+- Stable training with consistent gradients
 
-### SENSE Undersampling
+### Frame Preprocessing
 
-- **Pattern**: 40 out of 82 k-space columns (~2.05× acceleration)
-- **Center**: 18 columns fully sampled (100% acquisition)
-- **Periphery**: R=3 undersampling
-- **Applied at**: 82-column resolution (matches Dynamic acquisition)
+**First 5 frames removal:**
+```bash
+python remove_first_5_frames.py \
+    --dynamic-dir ../Dynamic_SENSE_padded \
+    --dynamic-output ../Dynamic_SENSE_padded_95f
+```
+
+**Rationale:** First 5 frames are 2.3× brighter due to sequence dynamics
 
 ---
 
-## Implementation Notes
+## 📊 Expected Results
 
-### Critical FFT Convention
+After 100 epochs of training:
 
-**IMPORTANT**: Use `axes=(0,)` for fftshift:
-
-```python
-# Correct
-img = scipy.fft.ifftshift(
-    scipy.fft.ifft2(scipy.fft.ifftshift(kspace, axes=(0,)), axes=(0, 1)),
-    axes=(0,)
-)
-```
-
-This matches MRI physics and prevents artifacts.
-
-### K-Space Processing Pipeline
-
-```
-1. Truncate to 80×82 (centered on k-space peak)
-2. Apply SENSE pattern (40/82, center 18 fully sampled)
-3. IFFT2 + RSS → 80×82 image
-4. Zero-pad to 312×410 via k-space
-```
-
-**Result**: Input (undersampled) + Target (fully-sampled) pair at 312×410
+| Metric | Initial | After Training |
+|--------|---------|----------------|
+| **Val PSNR** | ~16 dB | **27-32 dB** |
+| **Val SSIM** | ~0.22 | **0.75-0.85** |
+| **Training Time** | - | 30-45 min (Colab T4 GPU) |
 
 ---
 
-## File Organization
+## 🔧 Troubleshooting
+
+### Common Issues
+
+| Issue | Solution | Guide |
+|-------|----------|-------|
+| CUDA out of memory | Reduce `--batch-size 2` | README.md |
+| Dataset not found | Check data paths with `ls` | GETTING_STARTED.md |
+| Poor convergence | Adjust `--lr` or `--alpha` | README.md |
+| Colab disconnected | Use `--resume` to continue | USE_IN_COLAB.md |
+
+---
+
+## 📖 Project Structure
 
 ```
-synthsup-speechMRI-recon/
-├── docs/                           # Documentation
-│   ├── INDEX.md                    # This file
-│   ├── KSPACE_TRAINING.md          # K-space training guide
-│   ├── COLAB_TRAINING_GUIDE.md     # Colab instructions
-│   ├── INFERENCE_GUIDE.md          # Inference guide
-│   ├── GETTING_STARTED.md          # Getting started
-│   ├── UNET_ARCHITECTURE.md        # Architecture details
-│   ├── UNET_README.md              # U-Net training
-│   ├── DATA_CONSISTENCY_GUIDE.md   # Data consistency
-│   ├── QUICK_REFERENCE.md          # Command reference
-│   └── CHANGELOG.md                # Version history
-├── dataset_kspace.py               # K-space dataset loader
-├── train_unet_kspace.py            # K-space training script
-├── train_unet.py                   # Standard training script
-├── inference_unet.py               # Inference script
-└── unet_model.py                   # U-Net model
+docs/
+├── INDEX.md                    # This file
+├── GETTING_STARTED.md          # Local setup guide
+├── USE_IN_COLAB.md             # Google Colab guide
+├── README.md                   # U-Net architecture & training
+├── INFERENCE.md                # Inference & evaluation
+├── DATA_CONSISTENCY.md         # Physics constraints (optional)
+└── CHANGELOG.md                # Version history
 ```
 
 ---
 
-## Getting Help
+## ✅ Status
 
-1. **Check documentation**: See relevant guide above
-2. **Check FAQ**: Most guides have FAQ sections
-3. **Check troubleshooting**: Common issues and solutions
-4. **Test dataset**: Run `python3 dataset_kspace.py` to verify
-
----
-
-## Status
-
-- ✅ K-space training implemented and verified
-- ✅ FFT convention corrected (`axes=(0,)`)
-- ✅ K-space centering on peak (not geometric center)
-- ✅ Documentation consolidated and updated
-- ✅ Colab training guide created
+- ✅ Per-file [0,1] normalization implemented
+- ✅ First 5 frames preprocessing available
+- ✅ Documentation consolidated (15 → 7 files)
+- ✅ Google Colab training guide complete
 - ✅ Ready for production use
 
-**Last Updated**: 27 October 2025
+**Last Updated:** 28 October 2025
+
+````

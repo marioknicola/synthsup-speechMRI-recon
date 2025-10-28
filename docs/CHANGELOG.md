@@ -1,5 +1,93 @@
 # Changelog
 
+All notable changes to the synthsup-speechMRI-recon project.
+
+---
+
+## [Current] Normalization & Preprocessing Updates (October 28, 2025)
+
+### Major Changes
+
+#### 1. Data Normalization ✅
+- **Added per-file [0, 1] normalization** to `dataset.py`
+  - Computes min/max statistics for entire file at initialization
+  - All frames from same file normalized with same statistics
+  - Prevents frame-to-frame intensity variations
+  - Solves 4.8× intensity mismatch between training and test data
+- **Benefits:**
+  - Stable training with consistent gradients
+  - No negative values in predictions
+  - Better generalization to test data
+  - Automatic denormalization during inference
+
+#### 2. Frame Trimming Preprocessing ✅
+- **Created `remove_first_5_frames.py`** preprocessing script
+  - Removes first 5 frames from dynamic data (100 → 95 frames)
+  - First 5 frames are 2.3× brighter due to sequence dynamics
+  - Ensures consistent intensity across all frames
+  - Updates both NIfTI files and sensitivity maps
+- **Outputs:**
+  - `Dynamic_SENSE_padded_95f/`: 43 files × 95 frames
+  - `sensitivity_maps_95f/`: Trimmed sensitivity maps
+- **Rationale:** Transient bright frames would confuse model training
+
+#### 3. Documentation Consolidation ✅
+- **Reorganized docs folder** - Reduced from 15 files to 7 key documents:
+  - `USE_IN_COLAB.md` - Complete Google Colab training guide
+  - `DATA_CONSISTENCY.md` - Physics-based reconstruction constraint
+  - `GETTING_STARTED.md` - Step-by-step local setup
+  - `INDEX.md` - Documentation navigation
+  - `INFERENCE.md` - Inference and evaluation guide
+  - `CHANGELOG.md` - This file (all updates merged here)
+  - `README.md` - U-Net architecture and model details
+- **Removed:** Redundant update/fix docs, all historical changes consolidated into changelog
+
+### Implementation Details
+
+**Normalization (`dataset.py`):**
+```python
+def _compute_normalization_stats(self):
+    """Compute per-file min/max for consistent normalization."""
+    for file_idx, (input_file, target_file) in enumerate(...):
+        input_img = nib.load(input_file).get_fdata()
+        target_img = nib.load(target_file).get_fdata()
+        
+        self.norm_stats[file_idx] = {
+            'input_min': float(np.min(input_img)),
+            'input_max': float(np.max(input_img)),
+            'target_min': float(np.min(target_img)),
+            'target_max': float(np.max(target_img))
+        }
+```
+
+**Frame Trimming:**
+```bash
+python remove_first_5_frames.py \
+    --dynamic-dir ../Dynamic_SENSE_padded \
+    --sens-dir ../sensitivity_maps \
+    --dynamic-output ../Dynamic_SENSE_padded_95f \
+    --sens-output ../sensitivity_maps_95f
+```
+
+### Migration Guide
+
+**For Training:**
+- Normalization is automatic (enabled by default)
+- No code changes needed
+- Use trimmed dynamic data for testing: `--input-dir ../Dynamic_SENSE_padded_95f`
+
+**For Inference:**
+- Automatic denormalization to original intensity scale
+- No code changes needed
+- Model predictions maintain correct intensity range
+
+### Files Modified
+- `dataset.py` - Added per-file normalization
+- `remove_first_5_frames.py` - NEW preprocessing script
+- `docs/` - Consolidated from 15 to 7 files
+
+---
+
 ## Documentation Reorganization & Colab Support (October 27, 2025)
 
 ### Changes

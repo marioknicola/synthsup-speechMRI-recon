@@ -180,7 +180,7 @@ def train(args):
     criterion = CombinedLoss(alpha=args.loss_alpha)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=5, verbose=True
+        optimizer, mode='min', factor=0.5, patience=5 # removed verbose=True as Colab didn't like it
     )
     
     # Data loaders
