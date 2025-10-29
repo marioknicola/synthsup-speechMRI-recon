@@ -55,11 +55,11 @@ def check_data():
                 break
     
     # Print split breakdown
-    train_subjects = ['0025', '0026', '0027']
-    val_subjects = ['0023']
-    test_subjects = ['0024']
+    train_subjects = ['0023', '0024', '0025', '0026', '0027']
+    val_subjects = ['0022']
+    test_subjects = ['0021']
     
-    print("TRAINING SET (Subjects 0025, 0026, 0027):")
+    print("TRAINING SET (Subjects 0023, 0024, 0025, 0026, 0027):")
     print("-" * 80)
     train_total_input = 0
     train_total_target = 0
@@ -73,7 +73,7 @@ def check_data():
     print(f"  Total: {train_total_input} input files, {train_total_target} target files")
     print()
     
-    print("VALIDATION SET (Subject 0023):")
+    print("VALIDATION SET (Subject 0022):")
     print("-" * 80)
     val_total_input = 0
     val_total_target = 0
@@ -87,7 +87,7 @@ def check_data():
     print(f"  Total: {val_total_input} input files, {val_total_target} target files")
     print()
     
-    print("TEST SET (Subject 0024):")
+    print("TEST SET (Subject 0021):")
     print("-" * 80)
     test_total_input = 0
     test_total_target = 0

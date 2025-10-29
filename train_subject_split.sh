@@ -2,9 +2,9 @@
 # Training script for U-Net with subject-based split
 # 
 # Train/Val/Test Split:
-# - Train: Subject0025, Subject0026, Subject0027 (33 files)
-# - Val: Subject0023 (11 files)
-# - Test: Subject0024 (12 files)
+# - Train: Subject0023, Subject0024, Subject0025, Subject0026, Subject0027
+# - Val: Subject0022
+# - Test: Subject0021
 
 cd "/Users/marioknicola/MSc Project/synthsup-speechMRI-recon"
 
@@ -18,15 +18,13 @@ python3 train_unet_subject_split.py \
     --base-filters 32 \
     --loss-alpha 0.7 \
     --num-workers 4 \
-    --save-freq 10 \
-    --patience 10
+    --save-freq 10
 
 # Notes:
-# - Training on 33 files (Subjects 0025, 0026, 0027)
-# - Validation on 11 files (Subject 0023)
-# - Test set (Subject 0024) reserved for final evaluation
+# - Training on Subjects 0023, 0024, 0025, 0026, 0027
+# - Validation on Subject 0022
+# - Test set (Subject 0021) reserved for final evaluation
 # - Using base_filters=32 for same model capacity as before
 # - Loss: 70% L2 + 30% SSIM (alpha=0.7)
 # - Checkpoints saved every 10 epochs
 # - Best model saved based on validation loss
-# - Learning rate reduces on plateau with patience=10

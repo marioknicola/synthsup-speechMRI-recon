@@ -215,9 +215,6 @@ def train(args):
     # Loss function and optimizer
     criterion = CombinedLoss(alpha=args.loss_alpha)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=args.patience
-    )
     
     # Data loaders
     print("\nLoading data...")
@@ -233,9 +230,9 @@ def train(args):
     )
     
     # Split by subject
-    train_subjects = ['0025', '0026', '0027']
-    val_subjects = ['0023']
-    test_subjects = ['0024']
+    train_subjects = ['0023', '0024', '0025', '0026', '0027']
+    val_subjects = ['0022']
+    test_subjects = ['0021']
     
     train_indices, val_indices, test_indices = split_dataset_by_subject(
         full_dataset, train_subjects, val_subjects, test_subjects
@@ -263,6 +260,16 @@ def train(args):
         f.write(f"Test indices: {test_indices[:10]}... (showing first 10)\n")
     
     print(f"\nDataset split info saved to: {split_info_path}")
+    
+    # Save test indices for later evaluation
+    test_indices_path = Path(args.output_dir) / 'test_indices.txt'
+    with open(test_indices_path, 'w') as f:
+        f.write(f"# Test set indices (Subject {test_subjects})\n")
+        f.write(f"# Total dataset size: {len(full_dataset)}\n")
+        f.write(f"# Test indices: {len(test_indices)} frames\n")
+        for idx in test_indices:
+            f.write(f"{idx}\n")
+    print(f"Test set indices saved to: {test_indices_path}")
     
     # Create dataloaders
     train_loader = DataLoader(
@@ -309,9 +316,6 @@ def train(args):
         
         # Validate
         val_loss = validate_epoch(model, val_loader, criterion, device, epoch)
-        
-        # Learning rate scheduling
-        scheduler.step(val_loss)
         
         # Log metrics
         epoch_time = time.time() - epoch_start_time
@@ -376,14 +380,12 @@ def main():
                         help='Number of training epochs')
     parser.add_argument('--batch-size', type=int, default=4,
                         help='Batch size for training')
-    parser.add_argument('--lr', type=float, default=1e-4,
+    parser.add_argument('--lr', type=float, default=1e-5,
                         help='Learning rate')
     parser.add_argument('--weight-decay', type=float, default=1e-5,
                         help='Weight decay for optimizer')
     parser.add_argument('--loss-alpha', type=float, default=0.7,
                         help='Weight for L2 loss in combined loss (1-alpha for SSIM)')
-    parser.add_argument('--patience', type=int, default=5,
-                        help='Patience for learning rate scheduler')
     
     # System arguments
     parser.add_argument('--num-workers', type=int, default=4,
@@ -400,9 +402,9 @@ def main():
     print("Training Configuration - Subject-Based Split")
     print("=" * 80)
     print("Dataset Split:")
-    print("  Train: Subject0025, Subject0026, Subject0027")
-    print("  Val:   Subject0023")
-    print("  Test:  Subject0024")
+    print("  Train: Subject0023, Subject0024, Subject0025, Subject0026, Subject0027")
+    print("  Val:   Subject0022")
+    print("  Test:  Subject0021")
     print("\nModel & Training:")
     for arg, value in sorted(vars(args).items()):
         print(f"  {arg}: {value}")
