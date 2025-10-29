@@ -1,0 +1,415 @@
+"""
+Training script for U-Net with subject-based train/val/test split.
+
+Split strategy:
+- Train: Subject0025, Subject0026, Subject0027
+- Val: Subject0023
+- Test: Subject0024
+
+Usage:
+    python train_unet_subject_split.py --input-dir Synth_LR_nii --target-dir HR_nii --epochs 200
+"""
+
+import os
+import argparse
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Subset
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from unet_model import get_model
+from dataset import MRIReconstructionDataset
+
+
+class CombinedLoss(nn.Module):
+    """
+    Combined loss function: L2 (MSE) + SSIM loss.
+    
+    L2 loss for pixel-wise accuracy + SSIM for structural similarity.
+    """
+    def __init__(self, alpha=0.7):
+        super().__init__()
+        self.alpha = alpha
+        self.l2_loss = nn.MSELoss()
+    
+    def ssim_loss(self, pred, target, window_size=11):
+        """Compute SSIM loss (1 - SSIM)."""
+        # Simple SSIM implementation
+        C1 = 0.01 ** 2
+        C2 = 0.03 ** 2
+        
+        mu_x = torch.nn.functional.avg_pool2d(pred, window_size, stride=1, padding=window_size//2)
+        mu_y = torch.nn.functional.avg_pool2d(target, window_size, stride=1, padding=window_size//2)
+        
+        mu_x_sq = mu_x ** 2
+        mu_y_sq = mu_y ** 2
+        mu_xy = mu_x * mu_y
+        
+        sigma_x_sq = torch.nn.functional.avg_pool2d(pred ** 2, window_size, stride=1, padding=window_size//2) - mu_x_sq
+        sigma_y_sq = torch.nn.functional.avg_pool2d(target ** 2, window_size, stride=1, padding=window_size//2) - mu_y_sq
+        sigma_xy = torch.nn.functional.avg_pool2d(pred * target, window_size, stride=1, padding=window_size//2) - mu_xy
+        
+        ssim = ((2 * mu_xy + C1) * (2 * sigma_xy + C2)) / ((mu_x_sq + mu_y_sq + C1) * (sigma_x_sq + sigma_y_sq + C2))
+        
+        return 1 - ssim.mean()
+    
+    def forward(self, pred, target):
+        l2 = self.l2_loss(pred, target)
+        ssim = self.ssim_loss(pred, target)
+        return self.alpha * l2 + (1 - self.alpha) * ssim
+
+
+def split_dataset_by_subject(dataset, train_subjects, val_subjects, test_subjects):
+    """
+    Split dataset by subject IDs.
+    
+    Args:
+        dataset: MRIReconstructionDataset instance
+        train_subjects: List of subject IDs for training (e.g., ['0025', '0026', '0027'])
+        val_subjects: List of subject IDs for validation (e.g., ['0023'])
+        test_subjects: List of subject IDs for testing (e.g., ['0024'])
+    
+    Returns:
+        train_indices, val_indices, test_indices
+    """
+    train_indices = []
+    val_indices = []
+    test_indices = []
+    
+    print("\nSplitting dataset by subject...")
+    
+    for idx in range(len(dataset)):
+        file_idx, frame_idx = dataset.frame_index[idx]
+        filename = os.path.basename(dataset.input_files[file_idx])
+        
+        # Extract subject ID from filename (e.g., "LR_kspace_Subject0025_aa.nii" -> "0025")
+        subject_id = None
+        for part in filename.split('_'):
+            if 'Subject' in part:
+                subject_id = part.replace('Subject', '')
+                break
+        
+        if subject_id is None:
+            raise ValueError(f"Could not extract subject ID from filename: {filename}")
+        
+        # Assign to appropriate split
+        if subject_id in train_subjects:
+            train_indices.append(idx)
+        elif subject_id in val_subjects:
+            val_indices.append(idx)
+        elif subject_id in test_subjects:
+            test_indices.append(idx)
+        else:
+            print(f"Warning: Subject {subject_id} not in any split, skipping...")
+    
+    print(f"Train set: {len(train_indices)} frames from subjects {train_subjects}")
+    print(f"Val set: {len(val_indices)} frames from subjects {val_subjects}")
+    print(f"Test set: {len(test_indices)} frames from subjects {test_subjects}")
+    
+    return train_indices, val_indices, test_indices
+
+
+def train_epoch(model, dataloader, criterion, optimizer, device, epoch):
+    """Train for one epoch."""
+    model.train()
+    running_loss = 0.0
+    
+    pbar = tqdm(dataloader, desc=f"Epoch {epoch} [Train]")
+    for batch_idx, batch in enumerate(pbar):
+        inputs = batch['input'].to(device)
+        targets = batch['target'].to(device)
+        
+        # Forward pass
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
+        
+        # Backward pass
+        loss.backward()
+        optimizer.step()
+        
+        # Statistics
+        running_loss += loss.item()
+        pbar.set_postfix({'loss': f"{loss.item():.4f}"})
+    
+    epoch_loss = running_loss / len(dataloader)
+    return epoch_loss
+
+
+def validate_epoch(model, dataloader, criterion, device, epoch):
+    """Validate for one epoch."""
+    model.eval()
+    running_loss = 0.0
+    
+    with torch.no_grad():
+        pbar = tqdm(dataloader, desc=f"Epoch {epoch} [Val]")
+        for batch_idx, batch in enumerate(pbar):
+            inputs = batch['input'].to(device)
+            targets = batch['target'].to(device)
+            
+            # Forward pass
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            
+            # Statistics
+            running_loss += loss.item()
+            pbar.set_postfix({'loss': f"{loss.item():.4f}"})
+    
+    epoch_loss = running_loss / len(dataloader)
+    return epoch_loss
+
+
+def save_checkpoint(model, optimizer, epoch, best_loss, checkpoint_dir, is_best=False):
+    """Save model checkpoint."""
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'best_loss': best_loss,
+    }
+    
+    checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth')
+    torch.save(checkpoint, checkpoint_path)
+    
+    if is_best:
+        best_path = os.path.join(checkpoint_dir, 'best_model.pth')
+        torch.save(checkpoint, best_path)
+        print(f"✓ Saved best model with val_loss={best_loss:.4f}")
+
+
+def train(args):
+    """Main training function."""
+    # Setup
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+    
+    # Create output directories
+    checkpoint_dir = Path(args.output_dir) / 'checkpoints'
+    log_dir = Path(args.output_dir) / 'logs'
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # TensorBoard writer
+    writer = SummaryWriter(log_dir)
+    
+    # Create model
+    print("\nCreating model...")
+    model = get_model(
+        in_channels=args.in_channels,
+        out_channels=args.out_channels,
+        base_filters=args.base_filters,
+        bilinear=args.bilinear
+    )
+    model = model.to(device)
+    
+    # Count parameters
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total trainable parameters: {num_params:,}")
+    
+    # Loss function and optimizer
+    criterion = CombinedLoss(alpha=args.loss_alpha)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', factor=0.5, patience=args.patience
+    )
+    
+    # Data loaders
+    print("\nLoading data...")
+    print(f"Input directory: {args.input_dir}")
+    print(f"Target directory: {args.target_dir}")
+    
+    # Create full dataset
+    full_dataset = MRIReconstructionDataset(
+        input_dir=args.input_dir,
+        target_dir=args.target_dir,
+        normalize=True,
+        frame_range=None
+    )
+    
+    # Split by subject
+    train_subjects = ['0025', '0026', '0027']
+    val_subjects = ['0023']
+    test_subjects = ['0024']
+    
+    train_indices, val_indices, test_indices = split_dataset_by_subject(
+        full_dataset, train_subjects, val_subjects, test_subjects
+    )
+    
+    # Create subset datasets
+    train_dataset = Subset(full_dataset, train_indices)
+    val_dataset = Subset(full_dataset, val_indices)
+    test_dataset = Subset(full_dataset, test_indices)
+    
+    # Save split information
+    split_info_path = Path(args.output_dir) / 'dataset_split.txt'
+    with open(split_info_path, 'w') as f:
+        f.write("Subject-Based Dataset Split\n")
+        f.write("=" * 80 + "\n\n")
+        f.write(f"Train subjects: {train_subjects}\n")
+        f.write(f"  Total frames: {len(train_indices)}\n\n")
+        f.write(f"Val subjects: {val_subjects}\n")
+        f.write(f"  Total frames: {len(val_indices)}\n\n")
+        f.write(f"Test subjects: {test_subjects}\n")
+        f.write(f"  Total frames: {len(test_indices)}\n\n")
+        f.write("-" * 80 + "\n")
+        f.write(f"Train indices: {train_indices[:10]}... (showing first 10)\n")
+        f.write(f"Val indices: {val_indices[:10]}... (showing first 10)\n")
+        f.write(f"Test indices: {test_indices[:10]}... (showing first 10)\n")
+    
+    print(f"\nDataset split info saved to: {split_info_path}")
+    
+    # Create dataloaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True
+    )
+    
+    # Resume from checkpoint if specified
+    start_epoch = 0
+    best_val_loss = float('inf')
+    
+    if args.resume:
+        if os.path.exists(args.resume):
+            print(f"\nLoading checkpoint from {args.resume}")
+            checkpoint = torch.load(args.resume, map_location=device)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint['epoch'] + 1
+            best_val_loss = checkpoint.get('best_loss', float('inf'))
+            print(f"Resumed from epoch {start_epoch}")
+        else:
+            print(f"Warning: Checkpoint {args.resume} not found. Starting from scratch.")
+    
+    # Training loop
+    print(f"\nStarting training for {args.epochs} epochs...")
+    print("=" * 80)
+    
+    for epoch in range(start_epoch, args.epochs):
+        epoch_start_time = time.time()
+        
+        # Train
+        train_loss = train_epoch(model, train_loader, criterion, optimizer, device, epoch)
+        
+        # Validate
+        val_loss = validate_epoch(model, val_loader, criterion, device, epoch)
+        
+        # Learning rate scheduling
+        scheduler.step(val_loss)
+        
+        # Log metrics
+        epoch_time = time.time() - epoch_start_time
+        current_lr = optimizer.param_groups[0]['lr']
+        
+        print(f"\nEpoch {epoch}/{args.epochs}")
+        print(f"  Train Loss: {train_loss:.4f}")
+        print(f"  Val Loss:   {val_loss:.4f}")
+        print(f"  LR: {current_lr:.6f}")
+        print(f"  Time: {epoch_time:.1f}s")
+        print("-" * 80)
+        
+        # TensorBoard logging
+        writer.add_scalar('Loss/train', train_loss, epoch)
+        writer.add_scalar('Loss/val', val_loss, epoch)
+        writer.add_scalar('Learning_Rate', current_lr, epoch)
+        
+        # Save checkpoint
+        if (epoch + 1) % args.save_freq == 0:
+            save_checkpoint(model, optimizer, epoch, best_val_loss, checkpoint_dir, is_best=False)
+        
+        # Save best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            save_checkpoint(model, optimizer, epoch, best_val_loss, checkpoint_dir, is_best=True)
+    
+    print("\n" + "=" * 80)
+    print("Training complete!")
+    print(f"Best validation loss: {best_val_loss:.4f}")
+    print(f"Checkpoints saved to: {checkpoint_dir}")
+    print(f"\nDataset split:")
+    print(f"  Train: Subjects {train_subjects} - {len(train_indices)} frames")
+    print(f"  Val: Subjects {val_subjects} - {len(val_indices)} frames")
+    print(f"  Test: Subjects {test_subjects} - {len(test_indices)} frames (for later evaluation)")
+    
+    writer.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Train U-Net with subject-based split')
+    
+    # Data arguments
+    parser.add_argument('--input-dir', type=str, required=True,
+                        help='Directory with undersampled input images (Synth_LR_nii)')
+    parser.add_argument('--target-dir', type=str, required=True,
+                        help='Directory with fully-sampled target images (HR_nii)')
+    parser.add_argument('--output-dir', type=str, default='outputs_subject_split',
+                        help='Output directory for checkpoints and logs')
+    
+    # Model arguments
+    parser.add_argument('--in-channels', type=int, default=1,
+                        help='Number of input channels')
+    parser.add_argument('--out-channels', type=int, default=1,
+                        help='Number of output channels')
+    parser.add_argument('--base-filters', type=int, default=32,
+                        help='Number of filters in first layer (default: 32)')
+    parser.add_argument('--bilinear', action='store_true', default=True,
+                        help='Use bilinear upsampling')
+    
+    # Training arguments
+    parser.add_argument('--epochs', type=int, default=200,
+                        help='Number of training epochs')
+    parser.add_argument('--batch-size', type=int, default=4,
+                        help='Batch size for training')
+    parser.add_argument('--lr', type=float, default=1e-4,
+                        help='Learning rate')
+    parser.add_argument('--weight-decay', type=float, default=1e-5,
+                        help='Weight decay for optimizer')
+    parser.add_argument('--loss-alpha', type=float, default=0.7,
+                        help='Weight for L2 loss in combined loss (1-alpha for SSIM)')
+    parser.add_argument('--patience', type=int, default=5,
+                        help='Patience for learning rate scheduler')
+    
+    # System arguments
+    parser.add_argument('--num-workers', type=int, default=4,
+                        help='Number of data loading workers')
+    parser.add_argument('--save-freq', type=int, default=10,
+                        help='Save checkpoint every N epochs')
+    parser.add_argument('--resume', type=str, default=None,
+                        help='Path to checkpoint to resume from')
+    
+    args = parser.parse_args()
+    
+    # Print configuration
+    print("\n" + "=" * 80)
+    print("Training Configuration - Subject-Based Split")
+    print("=" * 80)
+    print("Dataset Split:")
+    print("  Train: Subject0025, Subject0026, Subject0027")
+    print("  Val:   Subject0023")
+    print("  Test:  Subject0024")
+    print("\nModel & Training:")
+    for arg, value in sorted(vars(args).items()):
+        print(f"  {arg}: {value}")
+    print("=" * 80 + "\n")
+    
+    train(args)
+
+
+if __name__ == "__main__":
+    main()

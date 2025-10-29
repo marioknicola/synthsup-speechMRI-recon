@@ -221,8 +221,8 @@ def process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=Tru
 
 if __name__ == '__main__':
     # Example usage
-    folder_path = '/Users/marioknicola/MSc Project/kspace_mat_512x512'  # Replace with your folder path
+    folder_path = '/Users/marioknicola/MSc Project/temp' 
     output_folder_fullres = 'HR_nii'
     output_folder_lowres = 'Synth_LR_nii'
     output_folder_cropped = 'Cropped_nii'
-    process_folder(folder_path, crop_size=40, plot_results=True, save_nifti=False, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres, output_folder_cropped=output_folder_cropped)
+    process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres, output_folder_cropped=output_folder_cropped)
