@@ -30,26 +30,55 @@ class MRIReconstructionDataset(Dataset):
         transform: Optional transforms to apply to both input and target
         normalize: Whether to normalize images to [0, 1] range (default: True)
         frame_range: Optional tuple (start, end) to load only specific frames
+        subject_ids: Optional list of subject IDs to filter files (e.g., ['0023', '0024'])
     """
     
-    def __init__(self, input_dir, target_dir, transform=None, normalize=True, frame_range=None):
+    def __init__(self, input_dir, target_dir, transform=None, normalize=True, frame_range=None, subject_ids=None):
         self.input_dir = Path(input_dir)
         self.target_dir = Path(target_dir)
         self.transform = transform
         self.normalize = normalize
         self.frame_range = frame_range
+        self.subject_ids = subject_ids
         
         # Find all NIfTI files
-        self.input_files = sorted(glob.glob(str(self.input_dir / "*.nii*")))
-        self.target_files = sorted(glob.glob(str(self.target_dir / "*.nii*")))
+        all_input_files = sorted(glob.glob(str(self.input_dir / "*.nii*")))
+        all_target_files = sorted(glob.glob(str(self.target_dir / "*.nii*")))
         
-        if len(self.input_files) == 0:
-            raise ValueError(f"No NIfTI files found in {input_dir}")
-        if len(self.target_files) == 0:
-            raise ValueError(f"No NIfTI files found in {target_dir}")
-        
-        print(f"Found {len(self.input_files)} input files")
-        print(f"Found {len(self.target_files)} target files")
+        # Filter by subject IDs if provided
+        if subject_ids is not None:
+            self.input_files = []
+            self.target_files = []
+            
+            for subj_id in subject_ids:
+                # Match files containing the subject ID (e.g., "Subject0023", "0023")
+                input_matches = [f for f in all_input_files if f"Subject{subj_id}" in f or f"_{subj_id}_" in f or f"_{subj_id}." in f]
+                target_matches = [f for f in all_target_files if f"Subject{subj_id}" in f or f"_{subj_id}_" in f or f"_{subj_id}." in f]
+                
+                self.input_files.extend(input_matches)
+                self.target_files.extend(target_matches)
+            
+            self.input_files = sorted(self.input_files)
+            self.target_files = sorted(self.target_files)
+            
+            if len(self.input_files) == 0:
+                raise ValueError(f"No input files found for subject IDs: {subject_ids} in {input_dir}")
+            if len(self.target_files) == 0:
+                raise ValueError(f"No target files found for subject IDs: {subject_ids} in {target_dir}")
+            
+            print(f"Filtered to {len(self.input_files)} input files for subjects: {subject_ids}")
+            print(f"Filtered to {len(self.target_files)} target files for subjects: {subject_ids}")
+        else:
+            self.input_files = all_input_files
+            self.target_files = all_target_files
+            
+            if len(self.input_files) == 0:
+                raise ValueError(f"No NIfTI files found in {input_dir}")
+            if len(self.target_files) == 0:
+                raise ValueError(f"No NIfTI files found in {target_dir}")
+            
+            print(f"Found {len(self.input_files)} input files")
+            print(f"Found {len(self.target_files)} target files")
         
         # Compute global normalization statistics if normalizing
         self.norm_stats = {}
