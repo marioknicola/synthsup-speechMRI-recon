@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+
+# Data files
+*.nii
+*.nii.gz
+*.mat
+*.h5
+*.hdf5
+
+# Large archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Model outputs
+checkpoints/
+results/
+outputs/
+logs/
+runs/
+
+# Large result directories (now in parent)
+cv_models/
+evaluation_results/
+inference_results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
