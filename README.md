@@ -3,8 +3,11 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/marioknicola/synthsup-speechMRI-recon/blob/main/colab_cross_validation.ipynb)
 
 A comprehensive toolkit for MRI reconstruction combining classical SENSE algorithms with deep learning (U-Net) approaches for accelerated dynamic speech MRI imaging.
+
+> 🚀 **Quick Start:** Click the "Open in Colab" badge above to train models with 6-fold cross-validation on free GPU!
 
 ## 🎯 Overview
 
@@ -23,7 +26,44 @@ This repository provides tools for:
 
 ## 📦 Quick Start
 
-### Installation
+### 🌐 Option 1: Train in Google Colab (Recommended)
+
+**Best for:** Fast training with free GPU, no local setup required
+
+1. **Click the badge:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/marioknicola/synthsup-speechMRI-recon/blob/main/colab_cross_validation.ipynb)
+
+2. **Prepare your data:**
+   ```bash
+   # On your local machine
+   cd "/path/to/MSc Project"
+   zip -r Synth_LR_nii.zip Synth_LR_nii/
+   zip -r HR_nii.zip HR_nii/
+   ```
+
+3. **In Colab:**
+   - Enable GPU: Runtime → Change runtime type → GPU
+   - Upload ZIP files when prompted
+   - Run all cells
+   - Download trained models after completion
+
+4. **Evaluate locally:**
+   ```bash
+   # Extract downloaded results
+   unzip ~/Downloads/cross_validation_results.zip -d ./cv_models
+   
+   # Batch evaluate all folds
+   python utils/evaluate_all_folds.py \
+       --models-dir ./cv_models \
+       --input-dir ../Synth_LR_nii \
+       --target-dir ../HR_nii \
+       --output-dir ./evaluation_results
+   ```
+
+📖 **Full workflow guide:** See [`docs/COLAB_TO_LOCAL_WORKFLOW.md`](docs/COLAB_TO_LOCAL_WORKFLOW.md)
+
+---
+
+### 💻 Option 2: Local Installation
 
 ```bash
 # Clone the repository
