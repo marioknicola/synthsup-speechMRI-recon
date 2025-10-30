@@ -32,11 +32,15 @@ def perform_sense_recon_generalized(k_undersampled, coil_sensitivities, acquired
     reconstructed_image_all_frames = np.zeros((Ny, Nx, Nf), dtype=np.complex128)
     
     # --- 3. Loop over Frames and Slices ---
+    Nf_sens = coil_sensitivities.shape[3]  # Number of sensitivity map frames
+    
     for t in range(Nf):
         print(f"\nReconstructing frame {t+1}/{Nf}...")
         
         k_frame = k_undersampled[:, :, :, t]
-        sens_frame = coil_sensitivities[:, :, :, t]
+        # Cycle through sensitivity maps if there are fewer than k-space frames
+        sens_idx = t % Nf_sens
+        sens_frame = coil_sensitivities[:, :, :, sens_idx]
         
         img_aliased_frame = scipy.fft.ifftshift(
             scipy.fft.ifft2(scipy.fft.ifftshift(k_frame, axes=(0,1)), axes=(0,1)), 

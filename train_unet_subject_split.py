@@ -166,7 +166,16 @@ def validate_epoch(model, dataloader, criterion, device, epoch):
 
 
 def save_checkpoint(model, optimizer, epoch, best_loss, checkpoint_dir, is_best=False):
-    """Save model checkpoint."""
+    """
+    Save model checkpoint.
+    
+    This function saves checkpoints in two ways:
+    1. Regular checkpoint: Saved every 'save_freq' epochs (e.g., checkpoint_epoch_10.pth)
+    2. Best model: Saved ONLY when validation loss improves (best_model.pth)
+    
+    The best model is continuously overwritten, so only the model with the 
+    lowest validation loss across ALL epochs is kept as best_model.pth.
+    """
     checkpoint = {
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
@@ -174,9 +183,11 @@ def save_checkpoint(model, optimizer, epoch, best_loss, checkpoint_dir, is_best=
         'best_loss': best_loss,
     }
     
+    # Save regular checkpoint (can accumulate if save_freq is set)
     checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth')
     torch.save(checkpoint, checkpoint_path)
     
+    # Save as best model ONLY if this is the best validation loss so far
     if is_best:
         best_path = os.path.join(checkpoint_dir, 'best_model.pth')
         torch.save(checkpoint, best_path)
@@ -208,7 +219,16 @@ def train(args):
     )
     model = model.to(device)
     
-    # Count parameters
+    # Count trainable parameters
+    # How it works:
+    # 1. model.parameters() - iterator over all parameter tensors (weights, biases)
+    # 2. p.requires_grad - filters to only trainable params (excludes frozen layers)
+    # 3. p.numel() - returns number of elements in each parameter tensor
+    # 4. sum(...) - adds up all elements across all parameter tensors
+    # Example: A conv layer with 32 filters, 3x3 kernel, 1 input channel has:
+    #   weights: 32 × 1 × 3 × 3 = 288 parameters
+    #   biases: 32 parameters
+    #   total: 320 parameters for that layer
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total trainable parameters: {num_params:,}")
     
@@ -333,13 +353,14 @@ def train(args):
         writer.add_scalar('Loss/val', val_loss, epoch)
         writer.add_scalar('Learning_Rate', current_lr, epoch)
         
-        # Save checkpoint
+        # Save checkpoint at regular intervals
         if (epoch + 1) % args.save_freq == 0:
             save_checkpoint(model, optimizer, epoch, best_val_loss, checkpoint_dir, is_best=False)
         
-        # Save best model
+        # Check if this is the best model so far (lowest validation loss)
+        # If yes, save it as best_model.pth (overwrites previous best)
         if val_loss < best_val_loss:
-            best_val_loss = val_loss
+            best_val_loss = val_loss  # Update the best validation loss
             save_checkpoint(model, optimizer, epoch, best_val_loss, checkpoint_dir, is_best=True)
     
     print("\n" + "=" * 80)
