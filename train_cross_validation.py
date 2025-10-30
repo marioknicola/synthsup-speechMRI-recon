@@ -151,9 +151,9 @@ def train_epoch(model, train_loader, criterion, optimizer, device, epoch):
     running_ssim = 0.0
     
     pbar = tqdm(train_loader, desc=f'Epoch {epoch} [Train]')
-    for batch_idx, (inputs, targets) in enumerate(pbar):
-        inputs = inputs.to(device)
-        targets = targets.to(device)
+    for batch_idx, batch in enumerate(pbar):
+        inputs = batch['input'].to(device)
+        targets = batch['target'].to(device)
         
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -189,9 +189,9 @@ def validate_epoch(model, val_loader, criterion, device, epoch, split_name='Val'
     
     with torch.no_grad():
         pbar = tqdm(val_loader, desc=f'Epoch {epoch} [{split_name}]')
-        for batch_idx, (inputs, targets) in enumerate(pbar):
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+        for batch_idx, batch in enumerate(pbar):
+            inputs = batch['input'].to(device)
+            targets = batch['target'].to(device)
             
             outputs = model(inputs)
             loss, mse, ssim = criterion(outputs, targets)
@@ -318,7 +318,7 @@ def main():
         train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=2,
         pin_memory=True
     )
     
@@ -327,7 +327,7 @@ def main():
             val_dataset,
             batch_size=args.batch_size,
             shuffle=False,
-            num_workers=4,
+            num_workers=2,
             pin_memory=True
         )
     else:
