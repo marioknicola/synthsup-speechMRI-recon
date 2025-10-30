@@ -11,11 +11,10 @@ This pipeline learns to reconstruct fully-sampled MRI images from undersampled/a
 **Training Strategy:**
 - **Input:** Synthetically undersampled images (`Synth_LR_nii/`)
 - **Target:** Fully-sampled high-resolution images (`HR_nii/`)
-- **Test:** Real dynamic SENSE data (`Dynamic_SENSE_padded_95f/`)
+- **Test:** Real dynamic SENSE data (`Dynamic_SENSE_padded/`)
 
 **Key Components:**
-- `unet_model.py` - U-Net architecture with optional data consistency
-- `dataset.py` - PyTorch data loaders with [0,1] normalization
+- `unet_model.py` - U-Net architecture - `dataset.py` - PyTorch data loaders with [0,1] normalization
 - `train_unet.py` - Training script with L1+SSIM loss
 - `inference_unet.py` - Inference with metrics and visualization
 
@@ -34,7 +33,7 @@ pip install -r requirements.txt
 python3 train_unet.py \
     --input-dir ../Synth_LR_nii \
     --target-dir ../HR_nii \
-    --epochs 100 \
+    --epochs 200 \
     --batch-size 4 \
     --base-filters 32
 ```
@@ -62,83 +61,16 @@ python3 inference_unet.py \
 
 ---
 
-## 📐 U-Net Architecture
-
-### High-Level Structure
-
-```
-Input (1, H, W)
-      ↓
-┌─────────────────────────────────────────────────────────┐
-│  Encoder (Downsampling Path)                            │
-│                                                          │
-│  Inc:    Conv(1→32) → BN → ReLU → Conv(32→32) → BN → ReLU
-│           │                                        │
-│           │                                        └─────────┐
-│           ↓                                                  │
-│  Down1:  MaxPool → Conv(32→64) → BN → ReLU                  │
-│           │                                        │         │
-│           │                                        └────────┐│
-│           ↓                                                 ││
-│  Down2:  MaxPool → Conv(64→128) → BN → ReLU                ││
-│           │                                        │        ││
-│           │                                        └───────┐││
-│           ↓                                                │││
-│  Down3:  MaxPool → Conv(128→256) → BN → ReLU              │││
-│           │                                        │       │││
-│           │                                        └──────┐│││
-│           ↓                                               ││││
-│  Down4:  MaxPool → Conv(256→256) → BN → ReLU             ││││
-│           │                              (bottleneck)     ││││
-└───────────┼──────────────────────────────────────────────┘│││
-            ↓                                                ││││
-┌───────────┼──────────────────────────────────────────────┐│││
-│  Decoder (Upsampling Path)                               ││││
-│                                                           ││││
-│  Up1:    Upsample → Concat(←──────────────────────────)  ││││
-│           │                                               ││││
-│           Conv(512→128) → BN → ReLU                       ││││
-│           ↓                                                │││
-│  Up2:    Upsample → Concat(←─────────────────────────)    │││
-│           │                                                │││
-│           Conv(256→64) → BN → ReLU                         │││
-│           ↓                                                 ││
-│  Up3:    Upsample → Concat(←────────────────────────)      ││
-│           │                                                 ││
-│           Conv(128→32) → BN → ReLU                          ││
-│           ↓                                                  │
-│  Up4:    Upsample → Concat(←───────────────────────────)    │
-│           │                                                  │
-│           Conv(64→32) → BN → ReLU                            │
-│           ↓                                                  │
-│  OutConv: Conv(32→1) - Final 1x1 convolution                │
-└───────────┼──────────────────────────────────────────────────┘
-            ↓
-    Output (1, H, W)
-```
-
-### Architecture Features
-
-**U-Net design advantages:**
-1. **Skip connections** preserve fine details lost during downsampling
-2. **Symmetric encoder-decoder** structure for image reconstruction
-3. **Fully convolutional** - handles arbitrary image sizes
-4. **Proven in medical imaging** - state-of-the-art for MRI reconstruction
-
 ### Parameter Configuration
 
 ```python
 # Lightweight baseline (default)
 model = UNet(in_channels=1, out_channels=1, base_filters=32)
-# Parameters: ~7.8M
-# Memory: ~5-8 GB training (batch_size=4)
-# Inference: ~30-60 ms per frame (GPU)
+
 
 # Heavier variant
 model = UNet(in_channels=1, out_channels=1, base_filters=64)
-# Parameters: ~31M
-# Memory: ~10-15 GB training (batch_size=4)
-# Inference: ~50-100 ms per frame (GPU)
+
 ```
 
 ### Layer Dimensions
@@ -158,9 +90,9 @@ For input shape `(1, 312, 410)` with `base_filters=32`:
 | **Up3** | (32, 156, 205) | 32 | 37,376 | ×1/2 resolution |
 | **Up4** | (32, 312, 410) | 32 | 18,752 | Full resolution |
 | **Output** | (1, 312, 410) | 1 | 33 | Final prediction |
-| **TOTAL** | - | - | **~7.8M** | |
-
 ---
+^^^ this doesn't include the batch size
+
 
 ## 🎓 Training Details
 
@@ -183,7 +115,7 @@ For input shape `(1, 312, 410)` with `base_filters=32`:
 Combined L1 + SSIM loss:
 
 ```python
-Loss = 0.84 × L1(pred, target) + 0.16 × SSIM_loss(pred, target)
+Loss = 0.70 × L1(pred, target) + 0.16 × SSIM_loss(pred, target)
 ```
 
 - **L1 Loss:** Pixel-wise accuracy
@@ -253,34 +185,6 @@ python3 train_unet.py \
 
 ## 🔧 Advanced Features
 
-### Data Preprocessing
-
-**Remove first 5 bright frames** from dynamic data:
-
-```bash
-python remove_first_5_frames.py \
-    --dynamic-dir ../Dynamic_SENSE_padded \
-    --sens-dir ../sensitivity_maps \
-    --dynamic-output ../Dynamic_SENSE_padded_95f \
-    --sens-output ../sensitivity_maps_95f
-```
-
-**Rationale:** First 5 frames are 2.3× brighter due to sequence dynamics
-
-### Data Consistency Layer (Optional)
-
-Physics-based constraint for k-space enforcement:
-
-```python
-from unet_model import UNetWithDC
-
-model = UNetWithDC(base_filters=32)
-```
-
-See [`DATA_CONSISTENCY.md`](DATA_CONSISTENCY.md) for details.
-
----
-
 ## 🗂️ Directory Structure
 
 ```
@@ -289,13 +193,31 @@ MSc Project/
 │   ├── unet_model.py
 │   ├── dataset.py
 │   ├── train_unet.py
+│   ├── train_cross_validation.py
 │   ├── inference_unet.py
 │   ├── remove_first_5_frames.py
+│   ├── utils/
+│   │   ├── evaluate_all_folds.py
+│   │   └── download_colab_models.py
 │   └── docs/
 │
 ├── Synth_LR_nii/                    # Training input
 ├── HR_nii/                          # Training target
 ├── Dynamic_SENSE_padded_95f/        # Test data (95 frames)
+│
+├── cv_models/                       # Cross-validation models
+│   ├── fold1/
+│   ├── fold2/
+│   ├── ...
+│   └── fold6/
+│
+├── evaluation_results/              # CV evaluation results
+│   ├── fold1/
+│   ├── ...
+│   └── cv_summary.json
+│
+├── inference_results/               # Inference outputs
+│   └── heldout_0021/
 │
 ├── outputs/                         # Training outputs
 │   ├── checkpoints/
@@ -349,17 +271,9 @@ python3 train_unet.py --batch-size 2 --base-filters 16 ...
 
 Verify data structure:
 ```bash
-ls ../Synth_LR_nii/*.nii | wc -l  # Should be 21
-ls ../HR_nii/*.nii | wc -l         # Should be 21
+ls ../Synth_LR_nii/*.nii | wc -l 
+ls ../HR_nii/*.nii | wc -l         
 ```
-
-### Poor Convergence
-
-- Try different learning rates (1e-3, 5e-4, 1e-4)
-- Adjust loss balance: `--alpha 0.5`
-- Increase epochs: `--epochs 200`
-
----
 
 ## 📚 See Also
 
@@ -369,18 +283,3 @@ ls ../HR_nii/*.nii | wc -l         # Should be 21
 - **[DATA_CONSISTENCY.md](DATA_CONSISTENCY.md)** - Physics-based constraints
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history
 
----
-
-## 📖 References
-
-- **U-Net:** Ronneberger et al., "U-Net: Convolutional Networks for Biomedical Image Segmentation" (MICCAI 2015)
-- **SENSE:** Pruessmann et al., "SENSE: Sensitivity Encoding for Fast MRI" (MRM 1999)
-- **SSIM:** Wang et al., "Image Quality Assessment: From Error Visibility to Structural Similarity" (IEEE TIP 2004)
-- **fastMRI:** Zbontar et al., "fastMRI: An Open Dataset and Benchmarks for Accelerated MRI" (arXiv:1811.08839)
-
----
-
-**Status:** ✅ Production ready  
-**Last Updated:** 28 October 2025  
-**Model:** U-Net with skip connections  
-**Parameters:** 7.8M (base_filters=32) or 31M (base_filters=64)

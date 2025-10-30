@@ -15,6 +15,7 @@ import os
 import argparse
 from pathlib import Path
 import glob
+import json
 
 import numpy as np
 import nibabel as nib
@@ -59,6 +60,16 @@ def compute_ssim(pred, target, window_size=11):
                ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
     
     return np.mean(ssim_map)
+
+
+def compute_nmse(pred, target):
+    """Compute Normalized Mean Squared Error."""
+    mse = np.mean((pred - target) ** 2)
+    target_energy = np.mean(target ** 2)
+    if target_energy == 0:
+        return 0.0
+    nmse = mse / target_energy
+    return nmse
 
 
 def load_model(checkpoint_path, device, in_channels=1, out_channels=1, base_filters=32):
@@ -336,6 +347,7 @@ def main():
                 num_frames = min(recon_volume.shape[2], target_data.shape[2])
                 psnr_values = []
                 ssim_values = []
+                nmse_values = []
                 
                 for frame_idx in range(num_frames):
                     recon_frame = recon_volume[:, :, frame_idx]
@@ -347,21 +359,26 @@ def main():
                     
                     psnr = compute_psnr(recon_norm, target_norm)
                     ssim = compute_ssim(recon_norm, target_norm)
+                    nmse = compute_nmse(recon_norm, target_norm)
                     
                     psnr_values.append(psnr)
                     ssim_values.append(ssim)
+                    nmse_values.append(nmse)
                 
                 avg_psnr = np.mean(psnr_values)
                 avg_ssim = np.mean(ssim_values)
+                avg_nmse = np.mean(nmse_values)
                 
                 print(f"\nMetrics for {filename}:")
                 print(f"  Avg PSNR: {avg_psnr:.2f} dB")
                 print(f"  Avg SSIM: {avg_ssim:.4f}")
+                print(f"  Avg NMSE: {avg_nmse:.6f}")
                 
                 all_metrics.append({
                     'filename': filename,
                     'psnr': avg_psnr,
                     'ssim': avg_ssim,
+                    'nmse': avg_nmse,
                     'num_frames': num_frames
                 })
             else:
@@ -398,9 +415,29 @@ def main():
         print(f"{'='*80}")
         avg_psnr = np.mean([m['psnr'] for m in all_metrics])
         avg_ssim = np.mean([m['ssim'] for m in all_metrics])
+        avg_nmse = np.mean([m['nmse'] for m in all_metrics])
+        avg_mse = np.mean([(1.0 / (10 ** (m['psnr'] / 10))) for m in all_metrics])  # Approximate MSE from PSNR
         print(f"Average PSNR: {avg_psnr:.2f} dB")
         print(f"Average SSIM: {avg_ssim:.4f}")
+        print(f"Average NMSE: {avg_nmse:.6f}")
         print(f"{'='*80}\n")
+        
+        # Save metrics to JSON file
+        metrics_summary = {
+            'average': {
+                'psnr': float(avg_psnr),
+                'ssim': float(avg_ssim),
+                'nmse': float(avg_nmse),
+                'mse': float(avg_mse)
+            },
+            'per_file': all_metrics,
+            'num_files': len(all_metrics)
+        }
+        
+        metrics_file = output_dir / 'metrics_summary.json'
+        with open(metrics_file, 'w') as f:
+            json.dump(metrics_summary, f, indent=4)
+        print(f"📊 Metrics saved to: {metrics_file}\n")
 
 
 if __name__ == "__main__":
