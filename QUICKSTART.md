@@ -17,11 +17,13 @@ zip -r HR_nii.zip HR_nii/
 5. Run all cells
 6. Wait for training to complete
 
-### Step 3: Download Models (5 min)
+### Step 3: Download Results (5 min)
 ```bash
-cd synthsup-speechMRI-recon
-python utils/download_colab_models.py --output-dir ./cv_models
-# Follow instructions to download from Google Drive
+# After training completes in Colab:
+# 1. Run Section 9 cells to create and download ZIP
+# 2. Extract locally:
+cd "/Users/marioknicola/MSc Project/synthsup-speechMRI-recon"
+unzip ~/Downloads/cross_validation_results.zip -d ./cv_models
 ```
 
 ### Step 4: Evaluate All Folds (30 min)

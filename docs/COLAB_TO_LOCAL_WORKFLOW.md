@@ -74,9 +74,9 @@ Each fold saves:
 - `config.json` - Training configuration
 - `training_history.json` - Loss/metrics per epoch
 
-Files are saved to Google Drive:
+Files are saved locally in Colab:
 ```
-/content/drive/MyDrive/MSc_Project/cross_validation_results/
+/content/cross_validation_results/
 ├── fold1/
 │   ├── fold1_best.pth
 │   ├── config.json
@@ -86,42 +86,33 @@ Files are saved to Google Drive:
 └── ...
 ```
 
-**Note:** Only best models are saved to conserve storage!
+**Note:** Only best models are saved to conserve storage!  
+**After training:** Download results using Section 9 of the notebook
 
 ---
 
-## Part 2: Download Models to Local
+## Part 2: Download Results from Colab
 
-### 2.1 Get Instructions
+### 2.1 Download from Colab
 
-```bash
-cd "/Users/marioknicola/MSc Project/synthsup-speechMRI-recon"
+After training completes, run the final cells in the notebook (Section 9):
 
-python utils/download_colab_models.py --output-dir ./cv_models
-```
+**Option A: Download ZIP (Recommended)**
+1. Run the "Prepare results" cell - creates `cross_validation_results.zip`
+2. Run the "Download ZIP" cell - downloads to your computer
+3. Extract locally:
+   ```bash
+   cd "/Users/marioknicola/MSc Project/synthsup-speechMRI-recon"
+   unzip ~/Downloads/cross_validation_results.zip -d ./cv_models
+   ```
 
-This prints detailed download instructions.
+**Option B: Manual Download via Files Panel**
+1. Click "Files" icon in left sidebar
+2. Navigate to `/content/cross_validation_results/`
+3. Right-click each fold folder → Download
+4. Move to `./cv_models/`
 
-### 2.2 Download via Google Drive
-
-**Option A: Web Interface**
-1. Go to https://drive.google.com/
-2. Navigate to: `MyDrive → MSc_Project → cross_validation_results`
-3. Download all fold directories
-4. Extract to `./cv_models/`
-
-**Option B: Google Drive Desktop** (if installed)
-```bash
-cp -r ~/Google\ Drive/My\ Drive/MSc_Project/cross_validation_results/* ./cv_models/
-```
-
-**Option C: Using the script (if Drive Desktop available)**
-```bash
-python utils/download_colab_models.py --output-dir ./cv_models
-# Follow prompts to auto-copy
-```
-
-### 2.3 Verify Downloads
+### 2.2 Verify Downloads
 
 ```bash
 ls -lh cv_models/*/fold*_best.pth
@@ -327,15 +318,15 @@ TRAINING_CONFIG = {
 
 ### Download Issues
 
-**Problem:** Google Drive storage full
+**Problem:** ZIP download fails or times out
 **Solution:** 
-- Each model is only ~30-50 MB (not GB)
-- Delete old Colab outputs: `/content/drive/MyDrive/Colab Notebooks/`
+- Use manual download (Option B) - download individual fold folders
+- Or split the ZIP creation (download 3 folds at a time)
 
-**Problem:** Can't find models in Drive
+**Problem:** Can't find results after training
 **Solution:**
-- Check: `MyDrive/MSc_Project/cross_validation_results/`
-- Verify Colab mounted Drive correctly in Section 1
+- Check: `/content/cross_validation_results/` in Files panel
+- Verify training completed successfully (check last cell output)
 
 ### Local Inference Issues
 
