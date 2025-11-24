@@ -21,14 +21,6 @@ python3 inference_unet.py \
 ## 📥 Step 1: Get Your Trained Model
 
 ### From Google Colab:
-
-**Option A: Download from Drive (Recommended)**
-1. Open Google Drive
-2. Navigate to your outputs folder (e.g., `MRI_Data/outputs/checkpoints/`)
-3. Download `best_model.pth`
-4. Place it in your local `MSc Project/outputs/checkpoints/` folder
-
-**Option B: Download from Colab Notebook**
 ```python
 from google.colab import files
 files.download('/content/drive/MyDrive/MRI_Data/outputs/checkpoints/best_model.pth')

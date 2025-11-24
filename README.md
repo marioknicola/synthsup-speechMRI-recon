@@ -1,97 +1,191 @@
-# Synthetically Supervised Deep Learning for Dynamic Speech MRI Reconstruction
+# Sliding-Window Cross-Validation for Dynamic Speech MRI Reconstruction# Synthetically Supervised Deep Learning for Dynamic Speech MRI Reconstruction
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/marioknicola/synthsup-speechMRI-recon/blob/main/colab_cross_validation.ipynb)
+
+
+This repository now focuses exclusively on the sliding-window cross-validation (CV)[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+training pipeline for synthetically supervised U-Net reconstruction of[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+
+dynamic speech MRI. Legacy one-off experiments, figure generators, and[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+redundant training scripts have been removed to keep the codebase lean and[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/marioknicola/synthsup-speechMRI-recon/blob/main/colab_cross_validation.ipynb)
+
+ready for the next stage of experimentation.
 
 A comprehensive toolkit for MRI reconstruction combining classical SENSE algorithms with deep learning (U-Net) approaches for accelerated dynamic speech MRI imaging.
 
+## 📦 Data layout
+
 > 🚀 **Quick Start:** Click the "Open in Colab" badge above to train models with 6-fold cross-validation on free GPU!
+
+All scripts expect the original project directory layout:
 
 ## 🎯 Overview
 
-This repository provides tools for:
-- **Classical SENSE Reconstruction:** For 22 coil data, the filled lines of kspace can be modified to fit the trajectory.
-- **Deep Learning Reconstruction:** Lightweight U-Net baseline for synthetically supervised learning
-- **Data Utilities:** Synthetic undersampling via kspace truncation and noise injection, image quality metrics, format conversion
-- **Training Pipeline:** Complete PyTorch training infrastructure with TensorBoard logging (in progress)
+```
 
-**Key Features:**
+MSc Project/This repository provides tools for:
+
+├── Synth_LR_nii/            # undersampled (LR) NIfTI inputs- **Classical SENSE Reconstruction:** For 22 coil data, the filled lines of kspace can be modified to fit the trajectory.
+
+├── HR_nii/                  # fully sampled (HR) targets- **Deep Learning Reconstruction:** Lightweight U-Net baseline for synthetically supervised learning
+
+├── Dynamic/                 # dynamic reconstructions (optional)- **Data Utilities:** Synthetic undersampling via kspace truncation and noise injection, image quality metrics, format conversion
+
+├── Dynamic_SENSE*/          # classical SENSE reconstructions- **Training Pipeline:** Complete PyTorch training infrastructure with TensorBoard logging (in progress)
+
+└── synthsup-speechMRI-recon/ # this repository
+
+```**Key Features:**
+
 - 📊 Automatic 80/10/10 train/val/test splitting with reproducible seeds, default is 42 (of course)
-- 📈 Built-in metrics (PSNR, SSIM) and visualization
-- 🔬 Lightweight baseline model (~7.8M parameters)
 
----
+> 🗂️ Keep large datasets outside the repo. Paths passed to the scripts are- 📈 Built-in metrics (PSNR, SSIM) and visualization
 
-## 📦 Quick Start
+> typically `../Synth_LR_nii` and `../HR_nii` relative to this folder.- 🔬 Lightweight baseline model (~7.8M parameters)
 
-### 🌐 Option 1: Train in Google Colab (Recommended)
+
+
+## 🚀 Quick start---
+
+
+
+```bash## 📦 Quick Start
+
+python -m venv .venv && source .venv/bin/activate
+
+pip install -r requirements.txt### 🌐 Option 1: Train in Google Colab (Recommended)
+
+```
 
 **Best for:** Fast training with free GPU, no local setup required
 
+Train the sliding CV experiment (5 sliding folds by default):
+
 1. **Click the badge:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/marioknicola/synthsup-speechMRI-recon/blob/main/colab_cross_validation.ipynb)
 
-2. **Prepare your data:**
-   ```bash
-   # On your local machine
-   cd "/path/to/MSc Project"
-   zip -r Synth_LR_nii.zip Synth_LR_nii/
-   zip -r HR_nii.zip HR_nii/
+```bash
+
+python train_cross_validation_sliding.py \2. **Prepare your data:**
+
+  --input-dir ../Synth_LR_nii \   ```bash
+
+  --target-dir ../HR_nii \   # On your local machine
+
+  --output-dir ../cv_outputs \   cd "/path/to/MSc Project"
+
+  --num-folds 5   zip -r Synth_LR_nii.zip Synth_LR_nii/
+
+```   zip -r HR_nii.zip HR_nii/
+
    ```
+
+Evaluate every fold and aggregate metrics:
 
 3. **In Colab:**
-   - Enable GPU: Runtime → Change runtime type → GPU
-   - Upload ZIP files when prompted
-   - Run all cells
-   - Download trained models after completion
 
-4. **Evaluate locally:**
-   ```bash
+```bash   - Enable GPU: Runtime → Change runtime type → GPU
+
+python evaluate_cv_sliding_folds.py \   - Upload ZIP files when prompted
+
+  --models-root ../cv_outputs \   - Run all cells
+
+  --input-dir ../Synth_LR_nii \   - Download trained models after completion
+
+  --target-dir ../HR_nii \
+
+  --output-dir ../cv_outputs/eval4. **Evaluate locally:**
+
+```   ```bash
+
    # Extract downloaded results
-   unzip ~/Downloads/cross_validation_results.zip -d ./cv_models
+
+Run inference on a held-out subject:   unzip ~/Downloads/cross_validation_results.zip -d ./cv_models
+
    
-   # Batch evaluate all folds
-   python utils/evaluate_all_folds.py \
-       --models-dir ./cv_models \
-       --input-dir ../Synth_LR_nii \
-       --target-dir ../HR_nii \
-       --output-dir ./evaluation_results
+
+```bash   # Batch evaluate all folds
+
+python inference_test_subject.py \   python utils/evaluate_all_folds.py \
+
+  --checkpoint ../cv_outputs/fold_03/checkpoints/best_model.pth \       --models-dir ./cv_models \
+
+  --input-file ../Synth_LR_nii/LR_kspace_Subject0026_aa.nii \       --input-dir ../Synth_LR_nii \
+
+  --output-dir ../cv_outputs/inference_subject0026       --target-dir ../HR_nii \
+
+```       --output-dir ./evaluation_results
+
    ```
+
+## 🔧 Key scripts
 
 📖 **Full workflow guide:** See [`docs/COLAB_TO_LOCAL_WORKFLOW.md`](docs/COLAB_TO_LOCAL_WORKFLOW.md)
 
----
+| File | Purpose |
 
-### 💻 Option 2: Local Installation
+| --- | --- |---
 
-```bash
-# Clone the repository
-cd "MSc Project"
-git clone  https://github.com/marioknicola/synthsup-speechMRI-recon
-cd synthsup-speechMRI-recon
+| `train_cross_validation_sliding.py` | Main training loop with sliding-window folds, CombinedLoss, early stopping, and TensorBoard logging. |
+
+| `evaluate_cv_sliding_folds.py` | Loads each fold’s checkpoint, reconstructs its held-out subject, and reports PSNR/SSIM/NMSE. |### 💻 Option 2: Local Installation
+
+| `train_cross_validation.py` | Older CV implementation (kept for reference; prefer the sliding version above). |
+
+| `evaluate_all_folds.py` | Utility to batch-evaluate checkpoints already exported from Colab/remote runs. |```bash
+
+| `inference_test_subject.py` | Lightweight subject inference helper for trained checkpoints. |# Clone the repository
+
+| `inference_dynamic_speech.py` | Batch inference over full dynamic sequences. |cd "MSc Project"
+
+| `dataset.py` | PyTorch dataset/dataloader helpers for paired LR/HR frames. |git clone  https://github.com/marioknicola/synthsup-speechMRI-recon
+
+| `unet_model.py` | U-Net architecture definition used across all scripts. |cd synthsup-speechMRI-recon
+
+| `utils/` | Data utilities (normalisation, resampling, noise injection, config helpers, etc.). |
 
 # Install dependencies
-pip install -r requirements.txt
-```
 
-### Basic Usage
+Deprecated stubs:pip install -r requirements.txt
+
+- `train_unet.py` now simply raises an error telling you to use the sliding CV```
+
+  script instead.
+
+- `inference_unet.py` points users to `evaluate_cv_sliding_folds.py` or### Basic Usage
+
+  `inference_test_subject.py`.
 
 **1. Classical SENSE Reconstruction:**
-```bash
-python3 sense_reconstruction.py \
-    --kspace ../kspace_mat_US/ \
-    --coilmap ../sensitivity_maps/ \
-    --output-dir ../ \
-    --plot
-```
 
-**2. Train U-Net (80/10/10 automatic split):**
-```bash
-# Standard training (pre-computed NIfTI pairs)
-python3 train_unet.py \
-    --input-dir ../Synth_LR_nii \
-    --target-dir ../HR_nii \
+## 🧪 Outputs```bash
+
+python3 sense_reconstruction.py \
+
+- Each fold saves checkpoints under `../cv_outputs/fold_XX/checkpoints/`.    --kspace ../kspace_mat_US/ \
+
+- Validation curves land in `../cv_outputs/fold_XX/logs/` for TensorBoard.    --coilmap ../sensitivity_maps/ \
+
+- Held-out subject metrics export to JSON/CSV under the evaluation folder.    --output-dir ../ \
+
+    --plot
+
+## 📝 Notes```
+
+
+
+- All figure-only utilities (`create_abstract_figure.py`,**2. Train U-Net (80/10/10 automatic split):**
+
+  `create_visual_comparisons.py`, `generate_pipeline_figure.py`,```bash
+
+  `compare_test_results.py`) were removed.# Standard training (pre-computed NIfTI pairs)
+
+- The repo sticks to Python ≥3.8 and PyTorch ≥2.0 per `requirements.txt`.python3 train_unet.py \
+
+- If you see references to "Experiment 01/02" in old notes, treat them as the    --input-dir ../Synth_LR_nii \
+
+  sliding CV run described above.    --target-dir ../HR_nii \
+
     --output-dir ../outputs \
     --epochs 100 \
     --batch-size 4
