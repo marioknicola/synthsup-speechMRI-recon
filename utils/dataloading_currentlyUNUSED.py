@@ -175,6 +175,19 @@ def process_kspace_data(file_path, crop_size=40, plot_results=False, save_nifti=
         sos_image_padded_processed = np.fliplr(np.rot90(sos_image_padded, k=-1))
         sos_image_cropped_processed = np.fliplr(np.rot90(sos_image_cropped, k=-1))
 
+        # Normalize all images to [0, 1] range
+        def normalize_to_01(data):
+            """Normalize data to [0, 1] range."""
+            vmin = data.min()
+            vmax = data.max()
+            if vmax - vmin > 1e-10:  # Avoid division by zero
+                return (data - vmin) / (vmax - vmin)
+            return data
+        
+        sos_image_original_processed = normalize_to_01(sos_image_original_processed)
+        sos_image_padded_processed = normalize_to_01(sos_image_padded_processed)
+        sos_image_cropped_processed = normalize_to_01(sos_image_cropped_processed)
+
         # Extract filename without extension
         file_name = os.path.splitext(os.path.basename(file_path))[0]
 
@@ -225,4 +238,4 @@ if __name__ == '__main__':
     output_folder_fullres = 'HR_nii'
     output_folder_lowres = 'Synth_LR_nii'
     output_folder_cropped = 'Cropped_nii'
-    process_folder(folder_path, crop_size=40, plot_results=False, save_nifti=True, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres, output_folder_cropped=output_folder_cropped)
+    process_folder(folder_path, crop_size=40, plot_results=True, save_nifti=False, output_folder_fullres=output_folder_fullres, output_folder_lowres=output_folder_lowres, output_folder_cropped=output_folder_cropped)

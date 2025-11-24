@@ -1,6 +1,6 @@
 # Quick Start: Train in Colab → Evaluate Locally
 
-## 🚀 In 5 Minutes
+## 🚀 In 5 Steps
 
 ### Step 1: Prepare Data (2 min)
 ```bash
@@ -10,78 +10,64 @@ zip -r HR_nii.zip HR_nii/
 ```
 
 ### Step 2: Train in Colab (12-18 hours)
-1. Open `colab_cross_validation.ipynb` in Google Colab
-2. Enable GPU: Runtime → Change runtime type → GPU
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/marioknicola/synthsup-speechMRI-recon/blob/main/colab_cross_validation.ipynb)
+
+1. Click badge above to open notebook
+2. Enable GPU: Runtime → Change runtime type → GPU (T4)
 3. Upload ZIP files when prompted
-4. Set held-out subject (default: 0021)
-5. Run all cells
-6. Wait for training to complete
+4. Run all cells
+5. Wait for training (~12-18 hours)
 
 ### Step 3: Download Results (5 min)
 ```bash
-# After training completes in Colab:
-# 1. Run Section 9 cells to create and download ZIP
-# 2. Extract locally:
+# After training completes in Colab, download and extract:
 cd "/Users/marioknicola/MSc Project/synthsup-speechMRI-recon"
 unzip ~/Downloads/cross_validation_results.zip -d ./cv_models
 ```
 
 ### Step 4: Evaluate All Folds (30 min)
 ```bash
-python utils/evaluate_all_folds.py \
+python evaluate_cv_sliding_folds.py \
     --models-dir ./cv_models \
-    --input-dir ../Synth_LR_nii \
-    --target-dir ../HR_nii \
+    --input-dir ../Synth_LR_unpadded_nii \
+    --target-dir ../Dynamic_SENSE_padded \
     --output-dir ./evaluation_results
 ```
 
-### Step 5: Test Best Model on Held-Out (5 min)
+### Step 5: Test Best Model (5 min)
 ```bash
-# Use fold recommended by evaluate_all_folds.py
-python inference_unet.py \
-    --checkpoint ./cv_models/fold2/fold2_best.pth \
-    --input-dir ../Synth_LR_nii \
-    --target-dir ../HR_nii \
-    --output-dir ./inference_results/heldout \
-    --file-pattern "*Subject0021*.nii" \
-    --compute-metrics --visualize
+# Use fold recommended by evaluation
+python inference_test_subject.py \
+    --checkpoint ./cv_models/fold_2/checkpoints/best_model.pth \
+    --input-file ../Synth_LR_unpadded_nii/Subject0021_aa.nii \
+    --output-dir ./inference_results/best_fold
 ```
 
-## 📊 Results
+---
 
-**Cross-validation (6 folds):**
+## 📊 View Results
+
 ```bash
+# CV summary
 cat evaluation_results/cv_summary.json
+
+# Best model metrics
+cat inference_results/best_fold/metrics_summary.json
+
+# Visualizations
+open inference_results/best_fold/comparisons/
 ```
 
-**Held-out test:**
-```bash
-cat inference_results/heldout/metrics_summary.json
-```
+---
 
-**Visualizations:**
-```bash
-open inference_results/heldout/comparisons/
-```
+## 📖 Need More Details?
 
-## 📝 For Your Abstract
+- **Complete workflow:** [`docs/COLAB_TO_LOCAL_WORKFLOW.md`](docs/COLAB_TO_LOCAL_WORKFLOW.md)
+- **CV strategy:** [`docs/7_SUBJECT_CV_STRATEGY.md`](docs/7_SUBJECT_CV_STRATEGY.md)
+- **Inference guide:** [`docs/INFERENCE.md`](docs/INFERENCE.md)
+- **Main README:** [`README.md`](README.md)
 
-Report:
-- **CV performance:** Mean ± SD from `cv_summary.json`
-- **Held-out performance:** Metrics from held-out test
-- **Methods:** See template in `docs/COLAB_TO_LOCAL_WORKFLOW.md`
+---
 
-## 🆘 Need Help?
-
-- **Full guide:** `docs/COLAB_TO_LOCAL_WORKFLOW.md`
-- **CV strategy:** `docs/7_SUBJECT_CV_STRATEGY.md`
-- **Troubleshooting:** See workflow guide Part 6
-
-## ✅ Checklist
-
-- [ ] Created ZIP files for upload
-- [ ] Trained all 6 folds in Colab
-- [ ] Downloaded models to `./cv_models/`
-- [ ] Ran batch evaluation
-- [ ] Tested best model on held-out subject
-- [ ] Collected metrics for abstract
+**Last Updated:** November 24, 2025
